@@ -54,27 +54,30 @@ export default function BackgammonBoard({
   onSelectPoint,
   onSelectBar,
 }: Props) {
-  const pointPositions: { x: number; isTop: boolean }[] = [];
-
-  for (let rawI = 0; rawI < 24; rawI++) {
-    const i = flipped ? 23 - rawI : rawI;
+  function getSlotPosition(slot: number): { x: number; isTop: boolean } {
     let x: number;
     let isTop: boolean;
-
-    if (i < 6) {
-      x = MARGIN_X + (5 - i) * POINT_W + POINT_W / 2 + BAR_W + 6 * POINT_W;
+    if (slot < 6) {
+      x = MARGIN_X + (5 - slot) * POINT_W + POINT_W / 2 + BAR_W + 6 * POINT_W;
       isTop = false;
-    } else if (i < 12) {
-      x = MARGIN_X + (11 - i) * POINT_W + POINT_W / 2;
+    } else if (slot < 12) {
+      x = MARGIN_X + (11 - slot) * POINT_W + POINT_W / 2;
       isTop = false;
-    } else if (i < 18) {
-      x = MARGIN_X + (i - 12) * POINT_W + POINT_W / 2;
+    } else if (slot < 18) {
+      x = MARGIN_X + (slot - 12) * POINT_W + POINT_W / 2;
       isTop = true;
     } else {
-      x = MARGIN_X + (i - 12) * POINT_W + POINT_W / 2 + BAR_W;
+      x = MARGIN_X + (slot - 12) * POINT_W + POINT_W / 2 + BAR_W;
       isTop = true;
     }
-    pointPositions.push({ x, isTop });
+    return { x, isTop };
+  }
+
+  const pointPositions: { x: number; isTop: boolean; pointIndex: number }[] = [];
+  for (let pointIndex = 0; pointIndex < 24; pointIndex++) {
+    const visualSlot = flipped ? 23 - pointIndex : pointIndex;
+    const { x, isTop } = getSlotPosition(visualSlot);
+    pointPositions.push({ x, isTop, pointIndex });
   }
 
   const barX = MARGIN_X + 6 * POINT_W + BAR_W / 2;
@@ -116,11 +119,11 @@ export default function BackgammonBoard({
         className="fill-[#3d2b1f] dark:fill-[#0f3460]"
       />
 
-      {pointPositions.map(({ x, isTop }, i) => {
-        const isSelected = selectedPoint === i;
-        const isHighlighted = highlightedPoints.has(i);
-        const isSelectable = selectablePoints.has(i) && isMyTurn && hasDice;
-        const isEven = i % 2 === 0;
+      {pointPositions.map(({ x, isTop, pointIndex }) => {
+        const isSelected = selectedPoint === pointIndex;
+        const isHighlighted = highlightedPoints.has(pointIndex);
+        const isSelectable = selectablePoints.has(pointIndex) && isMyTurn && hasDice;
+        const isEven = pointIndex % 2 === 0;
 
         const tipY = isTop ? MARGIN_Y : BOARD_H - MARGIN_Y;
         const baseY = isTop ? MARGIN_Y + POINT_H : BOARD_H - MARGIN_Y - POINT_H;
@@ -136,12 +139,12 @@ export default function BackgammonBoard({
         }
 
         return (
-          <g key={i}>
+          <g key={pointIndex}>
             <polygon
               points={`${x - POINT_W / 2},${baseY} ${x},${tipY} ${x + POINT_W / 2},${baseY}`}
               className={`${fillClass} ${isSelectable || isHighlighted ? "cursor-pointer" : ""} transition-colors`}
               style={{ opacity: isHighlighted ? 0.8 : 1 }}
-              onClick={() => onSelectPoint(i)}
+              onClick={() => onSelectPoint(pointIndex)}
             />
             <text
               x={x}
@@ -149,9 +152,9 @@ export default function BackgammonBoard({
               textAnchor="middle"
               className="text-[8px] fill-[#8b7355] dark:fill-[#555] select-none"
             >
-              {i + 1}
+              {pointIndex + 1}
             </text>
-            {board.points[i] !== 0 && renderCheckers(board.points[i], x, isTop, i)}
+            {board.points[pointIndex] !== 0 && renderCheckers(board.points[pointIndex], x, isTop, pointIndex)}
           </g>
         );
       })}
