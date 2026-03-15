@@ -76,6 +76,7 @@ export default function BackgammonBoard({
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const pendingRef = useRef<PendingDrag | null>(null);
   const dragFromRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
 
   function getSlotPosition(slot: number): { x: number; isTop: boolean } {
     let x: number;
@@ -179,6 +180,17 @@ export default function BackgammonBoard({
     return from;
   }, [activeDrag]);
 
+  const selectSource = useCallback(
+    (fromPoint: number) => {
+      if (fromPoint === -1 || fromPoint === 24) {
+        onSelectBar();
+      } else {
+        onSelectPoint(fromPoint);
+      }
+    },
+    [onSelectPoint, onSelectBar]
+  );
+
   const beginPendingDrag = useCallback(
     (
       e: React.PointerEvent,
@@ -189,12 +201,6 @@ export default function BackgammonBoard({
 
       e.preventDefault();
       e.stopPropagation();
-
-      if (fromPoint === -1 || fromPoint === 24) {
-        onSelectBar();
-      } else {
-        onSelectPoint(fromPoint);
-      }
 
       dragFromRef.current = fromPoint;
       pendingRef.current = {
@@ -210,7 +216,7 @@ export default function BackgammonBoard({
         svg.setPointerCapture(e.pointerId);
       }
     },
-    [isMyTurn, hasDice, onSelectPoint, onSelectBar]
+    [isMyTurn, hasDice]
   );
 
   const onPointerMove = useCallback(
@@ -221,6 +227,7 @@ export default function BackgammonBoard({
         if (Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
           const pos = screenToSvg(e.clientX, e.clientY);
           if (pos) {
+            selectSource(pendingRef.current.fromPoint);
             setActiveDrag({
               fromPoint: pendingRef.current.fromPoint,
               color: pendingRef.current.color,
@@ -241,12 +248,13 @@ export default function BackgammonBoard({
         prev ? { ...prev, svgX: pos.x, svgY: pos.y } : null
       );
     },
-    [activeDrag, screenToSvg]
+    [activeDrag, screenToSvg, selectSource]
   );
 
   const onPointerUp = useCallback(
     (e: React.PointerEvent) => {
       if (pendingRef.current) {
+        const pending = pendingRef.current;
         const svg = svgRef.current;
         if (svg) {
           try {
@@ -255,6 +263,8 @@ export default function BackgammonBoard({
         }
         pendingRef.current = null;
         dragFromRef.current = null;
+        selectSource(pending.fromPoint);
+        suppressClickRef.current = true;
         return;
       }
 
@@ -280,8 +290,9 @@ export default function BackgammonBoard({
 
       setActiveDrag(null);
       dragFromRef.current = null;
+      suppressClickRef.current = true;
     },
-    [activeDrag, screenToSvg, hitTestPoint, onSelectPoint]
+    [activeDrag, screenToSvg, hitTestPoint, onSelectPoint, selectSource]
   );
 
   const onPointerCancel = useCallback(
@@ -485,9 +496,17 @@ export default function BackgammonBoard({
       selectablePoints.has(pointIndex) && isMyTurn && hasDice;
     const isDragSource = activeDrag?.fromPoint === pointIndex;
 
+    const handleCheckerClick = () => {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      onSelectPoint(pointIndex);
+    };
+
     return (
       <g
-        onClick={() => onSelectPoint(pointIndex)}
+        onClick={handleCheckerClick}
         className={isSelectable ? "cursor-pointer" : ""}
       >
         {positions.map((pos, i) => {
@@ -560,9 +579,17 @@ export default function BackgammonBoard({
     const barFrom = color === "white" ? -1 : 24;
     const isDragSource = activeDrag?.fromPoint === barFrom;
 
+    const handleBarClick = () => {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      onSelectBar();
+    };
+
     return (
       <g
-        onClick={isClickable ? onSelectBar : undefined}
+        onClick={isClickable ? handleBarClick : undefined}
         className={isClickable ? "cursor-pointer" : ""}
       >
         {Array.from({ length: Math.min(count, 4) }).map((_, i) => {
