@@ -4,13 +4,13 @@ import {
   createInitialGameState,
   rollDice,
   getRemainingMoves,
-  getValidMoves,
+  getValidMovesForFullTurn,
   applyMove,
   checkWinner,
-  isValidMove,
   hasAnyValidMoves,
   type GameState,
   type PlayerColor,
+  type ValidMove,
 } from "./game-logic.js";
 
 interface GameRoom {
@@ -18,6 +18,42 @@ interface GameRoom {
   state: GameState;
   players: { white: string | null; black: string | null };
   peerIds: { white: string | null; black: string | null };
+}
+
+interface CreateGameResponse {
+  success: boolean;
+  gameId?: string;
+  color?: PlayerColor;
+  state?: GameState;
+  error?: string;
+}
+
+interface JoinGameResponse {
+  success: boolean;
+  gameId?: string;
+  color?: PlayerColor;
+  state?: GameState;
+  error?: string;
+}
+
+interface RollDiceResponse {
+  success: boolean;
+  dice?: number[];
+  noMoves?: boolean;
+  validMoves?: ValidMove[];
+  error?: string;
+}
+
+interface MovePieceResponse {
+  success: boolean;
+  hitOpponent?: boolean;
+  validMoves?: ValidMove[];
+  error?: string;
+}
+
+interface GenericResponse {
+  success: boolean;
+  error?: string;
 }
 
 const games = new Map<string, GameRoom>();
@@ -46,7 +82,7 @@ export function setupSocketIO(httpServer: HttpServer): SocketServer {
   io.on("connection", (socket: Socket) => {
     console.log(`Player connected: ${socket.id}`);
 
-    socket.on("create-game", (callback) => {
+    socket.on("create-game", (callback: (res: CreateGameResponse) => void) => {
       let gameId = generateGameId();
       while (games.has(gameId)) {
         gameId = generateGameId();
@@ -64,12 +100,12 @@ export function setupSocketIO(httpServer: HttpServer): SocketServer {
       callback({
         success: true,
         gameId,
-        color: 'white' as PlayerColor,
+        color: 'white',
         state: room.state,
       });
     });
 
-    socket.on("join-game", (data: { gameId: string }, callback) => {
+    socket.on("join-game", (data: { gameId: string }, callback: (res: JoinGameResponse) => void) => {
       const gameId = data.gameId.toUpperCase();
       const room = games.get(gameId);
 
@@ -88,14 +124,14 @@ export function setupSocketIO(httpServer: HttpServer): SocketServer {
       callback({
         success: true,
         gameId,
-        color: 'black' as PlayerColor,
+        color: 'black',
         state: room.state,
       });
 
       io.to(gameId).emit("game-started", { state: room.state });
     });
 
-    socket.on("roll-dice", (data: { gameId: string }, callback) => {
+    socket.on("roll-dice", (data: { gameId: string }, callback: (res: RollDiceResponse) => void) => {
       const room = games.get(data.gameId);
       if (!room) { callback({ success: false, error: "Game not found" }); return; }
 
@@ -114,7 +150,7 @@ export function setupSocketIO(httpServer: HttpServer): SocketServer {
       room.state.dice = dice;
       room.state.remainingMoves = getRemainingMoves(dice);
 
-      const validMoves = getValidMoves(room.state.board, color, room.state.remainingMoves);
+      const validMoves = getValidMovesForFullTurn(room.state.board, color, room.state.remainingMoves);
 
       if (validMoves.length === 0) {
         room.state.lastMove = `${color === 'white' ? 'White' : 'Black'} rolled ${dice[0]}-${dice[1]} but has no valid moves`;
@@ -131,7 +167,7 @@ export function setupSocketIO(httpServer: HttpServer): SocketServer {
       callback({ success: true, dice, noMoves: false, validMoves });
     });
 
-    socket.on("move-piece", (data: { gameId: string; from: number; to: number }, callback) => {
+    socket.on("move-piece", (data: { gameId: string; from: number; to: number }, callback: (res: MovePieceResponse) => void) => {
       const room = games.get(data.gameId);
       if (!room) { callback({ success: false, error: "Game not found" }); return; }
 
@@ -141,15 +177,12 @@ export function setupSocketIO(httpServer: HttpServer): SocketServer {
         return;
       }
 
-      const { valid, die } = isValidMove(
-        room.state.board,
-        color,
-        data.from,
-        data.to,
-        room.state.remainingMoves
+      const constrainedMoves = getValidMovesForFullTurn(room.state.board, color, room.state.remainingMoves);
+      const matchedMove = constrainedMoves.find(
+        (m) => m.from === data.from && m.to === data.to
       );
 
-      if (!valid) {
+      if (!matchedMove) {
         callback({ success: false, error: "Invalid move" });
         return;
       }
@@ -157,7 +190,7 @@ export function setupSocketIO(httpServer: HttpServer): SocketServer {
       const { newBoard, hitOpponent } = applyMove(room.state.board, color, data.from, data.to);
       room.state.board = newBoard;
 
-      const dieIndex = room.state.remainingMoves.indexOf(die);
+      const dieIndex = room.state.remainingMoves.indexOf(matchedMove.die);
       if (dieIndex !== -1) {
         room.state.remainingMoves.splice(dieIndex, 1);
       }
@@ -181,6 +214,8 @@ export function setupSocketIO(httpServer: HttpServer): SocketServer {
         return;
       }
 
+      let nextValidMoves: ValidMove[] = [];
+
       if (room.state.remainingMoves.length === 0) {
         room.state.currentPlayer = color === 'white' ? 'black' : 'white';
         room.state.dice = [];
@@ -191,14 +226,16 @@ export function setupSocketIO(httpServer: HttpServer): SocketServer {
           room.state.currentPlayer = color === 'white' ? 'black' : 'white';
           room.state.dice = [];
           room.state.remainingMoves = [];
+        } else {
+          nextValidMoves = getValidMovesForFullTurn(room.state.board, color, room.state.remainingMoves);
         }
       }
 
       io.to(data.gameId).emit("state-update", { state: room.state });
-      callback({ success: true, hitOpponent });
+      callback({ success: true, hitOpponent, validMoves: nextValidMoves });
     });
 
-    socket.on("end-turn", (data: { gameId: string }, callback) => {
+    socket.on("end-turn", (data: { gameId: string }, callback: (res: GenericResponse) => void) => {
       const room = games.get(data.gameId);
       if (!room) { callback({ success: false, error: "Game not found" }); return; }
 

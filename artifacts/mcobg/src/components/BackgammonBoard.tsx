@@ -21,18 +21,6 @@ const CHECKER_R = 20;
 const MARGIN_X = 30;
 const MARGIN_Y = 20;
 
-function getPointX(index: number): number {
-  if (index < 6) {
-    return MARGIN_X + BOARD_W - MARGIN_X - POINT_W / 2 - index * POINT_W;
-  } else if (index < 12) {
-    return MARGIN_X + BOARD_W - MARGIN_X - BAR_W - POINT_W / 2 - index * POINT_W + (6 - index) * 0 - POINT_W * 0 + (BOARD_W - 2 * MARGIN_X - BAR_W - 12 * POINT_W) / 2 + (11 - index) * POINT_W;
-  } else if (index < 18) {
-    return MARGIN_X + (index - 12) * POINT_W + POINT_W / 2;
-  } else {
-    return MARGIN_X + (index - 12) * POINT_W + BAR_W + POINT_W / 2;
-  }
-}
-
 function getCheckerPositions(
   count: number,
   isTop: boolean,
@@ -87,6 +75,11 @@ export default function BackgammonBoard({
   }
 
   const barX = MARGIN_X + 6 * POINT_W + BAR_W / 2;
+
+  const whiteBarClickable =
+    isMyTurn && hasDice && myColor === "white" && board.whiteBar > 0;
+  const blackBarClickable =
+    isMyTurn && hasDice && myColor === "black" && board.blackBar > 0;
 
   return (
     <svg
@@ -147,6 +140,14 @@ export default function BackgammonBoard({
               style={{ opacity: isHighlighted ? 0.8 : 1 }}
               onClick={() => onSelectPoint(i)}
             />
+            <text
+              x={x}
+              y={isTop ? MARGIN_Y - 6 : BOARD_H - MARGIN_Y + 14}
+              textAnchor="middle"
+              className="text-[8px] fill-[#8b7355] dark:fill-[#555] select-none"
+            >
+              {i + 1}
+            </text>
             {board.points[i] !== 0 && renderCheckers(board.points[i], x, isTop, i)}
           </g>
         );
@@ -161,9 +162,9 @@ export default function BackgammonBoard({
       {selectedPoint === -1 && (
         <rect
           x={barX - BAR_W / 2 - 2}
-          y={BOARD_H / 2 - 30}
+          y={BOARD_H / 2 + 20}
           width={BAR_W + 4}
-          height={60}
+          height={BOARD_H / 2 - MARGIN_Y - 20}
           rx={4}
           fill="none"
           stroke="#fbbf24"
@@ -175,7 +176,7 @@ export default function BackgammonBoard({
           x={barX - BAR_W / 2 - 2}
           y={MARGIN_Y}
           width={BAR_W + 4}
-          height={60}
+          height={BOARD_H / 2 - MARGIN_Y - 20}
           rx={4}
           fill="none"
           stroke="#fbbf24"
@@ -183,16 +184,16 @@ export default function BackgammonBoard({
         />
       )}
 
-      {(highlightedPoints.has(-1) || highlightedPoints.has(24)) && (
+      {(highlightedPoints.has(24) || highlightedPoints.has(-1)) && (
         <rect
           x={BOARD_W - MARGIN_X + 4}
-          y={highlightedPoints.has(-1) ? BOARD_H - MARGIN_Y - 80 : MARGIN_Y}
+          y={highlightedPoints.has(24) ? MARGIN_Y : BOARD_H - MARGIN_Y - 80}
           width={20}
           height={80}
           rx={4}
           className="fill-[#4ade80] dark:fill-[#22c55e] cursor-pointer"
           style={{ opacity: 0.7 }}
-          onClick={() => onSelectPoint(highlightedPoints.has(-1) ? -1 : 24)}
+          onClick={() => onSelectPoint(highlightedPoints.has(24) ? 24 : -1)}
         />
       )}
     </svg>
@@ -250,9 +251,7 @@ export default function BackgammonBoard({
 
   function renderBarCheckers(count: number, color: "white" | "black", bx: number, isBottom: boolean) {
     if (count === 0) return null;
-    const isClickable =
-      isMyTurn && hasDice && myColor === color &&
-      ((color === "white" && board.whiteBar > 0) || (color === "black" && board.blackBar > 0));
+    const isClickable = color === "white" ? whiteBarClickable : blackBarClickable;
 
     return (
       <g onClick={isClickable ? onSelectBar : undefined} className={isClickable ? "cursor-pointer" : ""}>
@@ -292,13 +291,13 @@ export default function BackgammonBoard({
 
   function renderOffBoard(count: number, color: "white" | "black") {
     const x = BOARD_W - 18;
-    const isBottom = color === "white";
+    const isTop = color === "white";
     return (
       <g>
         {Array.from({ length: Math.min(count, 5) }).map((_, i) => {
-          const y = isBottom
-            ? BOARD_H - MARGIN_Y - 8 - i * 14
-            : MARGIN_Y + 8 + i * 14;
+          const y = isTop
+            ? MARGIN_Y + 8 + i * 14
+            : BOARD_H - MARGIN_Y - 8 - i * 14;
           return (
             <rect
               key={i}
@@ -319,7 +318,7 @@ export default function BackgammonBoard({
         {count > 5 && (
           <text
             x={x}
-            y={isBottom ? BOARD_H - MARGIN_Y - 8 - 4 * 14 : MARGIN_Y + 8 + 4 * 14}
+            y={isTop ? MARGIN_Y + 8 + 4 * 14 : BOARD_H - MARGIN_Y - 8 - 4 * 14}
             textAnchor="middle"
             dominantBaseline="central"
             className="text-[10px] font-bold fill-white"

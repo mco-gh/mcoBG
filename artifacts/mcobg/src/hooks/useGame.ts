@@ -1,6 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { getSocket } from "@/lib/socket";
-import type { GameState, PlayerColor, ValidMove } from "@/lib/game-types";
+import type {
+  GameState,
+  PlayerColor,
+  ValidMove,
+  CreateGameResponse,
+  JoinGameResponse,
+  RollDiceResponse,
+  MovePieceResponse,
+  GenericResponse,
+} from "@/lib/game-types";
 
 export type GamePhase = "landing" | "waiting" | "playing" | "gameover";
 
@@ -30,12 +39,13 @@ export function useGame() {
 
     socket.on("state-update", (data: { state: GameState }) => {
       setGameState(data.state);
-      setValidMoves([]);
       setSelectedPoint(null);
     });
 
     socket.on("game-over", () => {
       setPhase("gameover");
+      setValidMoves([]);
+      setSelectedPoint(null);
     });
 
     socket.on("opponent-disconnected", () => {
@@ -65,27 +75,27 @@ export function useGame() {
   }, []);
 
   const createGame = useCallback(() => {
-    socketRef.current.emit("create-game", (response: any) => {
-      if (response.success) {
+    socketRef.current.emit("create-game", (response: CreateGameResponse) => {
+      if (response.success && response.gameId && response.color && response.state) {
         setGameId(response.gameId);
         setMyColor(response.color);
         setGameState(response.state);
         setPhase("waiting");
       } else {
-        setError(response.error);
+        setError(response.error ?? "Failed to create game");
       }
     });
   }, []);
 
   const joinGame = useCallback((id: string) => {
-    socketRef.current.emit("join-game", { gameId: id }, (response: any) => {
-      if (response.success) {
+    socketRef.current.emit("join-game", { gameId: id }, (response: JoinGameResponse) => {
+      if (response.success && response.gameId && response.color && response.state) {
         setGameId(response.gameId);
         setMyColor(response.color);
         setGameState(response.state);
         setPhase("playing");
       } else {
-        setError(response.error);
+        setError(response.error ?? "Failed to join game");
       }
     });
   }, []);
@@ -94,14 +104,16 @@ export function useGame() {
     if (!gameId || !isMyTurn) return;
     setIsRolling(true);
     setTimeout(() => {
-      socketRef.current.emit("roll-dice", { gameId }, (response: any) => {
+      socketRef.current.emit("roll-dice", { gameId }, (response: RollDiceResponse) => {
         setIsRolling(false);
         if (response.success) {
-          if (!response.noMoves) {
-            setValidMoves(response.validMoves || []);
+          if (!response.noMoves && response.validMoves) {
+            setValidMoves(response.validMoves);
+          } else {
+            setValidMoves([]);
           }
         } else {
-          setError(response.error);
+          setError(response.error ?? "Failed to roll dice");
         }
       });
     }, 600);
@@ -109,7 +121,7 @@ export function useGame() {
 
   const selectPoint = useCallback(
     (pointIndex: number) => {
-      if (!isMyTurn || !hasDice || !hasRemainingMoves) return;
+      if (!isMyTurn || !hasDice || !hasRemainingMoves || validMoves.length === 0) return;
 
       if (selectedPoint === null) {
         const movesFromHere = validMoves.filter((m) => m.from === pointIndex);
@@ -145,30 +157,25 @@ export function useGame() {
       socketRef.current.emit(
         "move-piece",
         { gameId, from, to },
-        (response: any) => {
+        (response: MovePieceResponse) => {
           if (response.success) {
             setSelectedPoint(null);
-            if (gameState) {
-              const die = validMoves.find(
-                (m) => m.from === from && m.to === to
-              )?.die;
-              if (die !== undefined) {
-                const newRemaining = [...gameState.remainingMoves];
-                const idx = newRemaining.indexOf(die);
-                if (idx !== -1) newRemaining.splice(idx, 1);
-              }
+            if (response.validMoves && response.validMoves.length > 0) {
+              setValidMoves(response.validMoves);
+            } else {
+              setValidMoves([]);
             }
           } else {
-            setError(response.error);
+            setError(response.error ?? "Invalid move");
           }
         }
       );
     },
-    [gameId, gameState, validMoves]
+    [gameId]
   );
 
   const selectBarChecker = useCallback(() => {
-    if (!isMyTurn || !hasDice || !hasRemainingMoves) return;
+    if (!isMyTurn || !hasDice || !hasRemainingMoves || validMoves.length === 0) return;
     const barFrom = myColor === "white" ? -1 : 24;
     const movesFromBar = validMoves.filter((m) => m.from === barFrom);
     if (movesFromBar.length > 0) {

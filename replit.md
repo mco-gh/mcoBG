@@ -55,7 +55,7 @@ artifacts-monorepo/
 - Animated dice rolling
 - PeerJS video/audio chat between players
 - Dark mode (default) / light mode toggle
-- Modals: About/How to Play, Connect (share Game ID)
+- Modals: About/How to Play, Config (theme toggle, movement direction, player info), Connect (share Game ID)
 - Rematch support
 - Graceful disconnection handling
 

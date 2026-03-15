@@ -49,6 +49,7 @@ export default function GameScreen({
 }: Props) {
   const [showAbout, setShowAbout] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const copyGameId = () => {
@@ -75,6 +76,13 @@ export default function GameScreen({
             title="Share Game ID"
           >
             <Share2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShowConfig(true)}
+            className="p-2 rounded-lg hover:bg-[#d4c4a8] dark:hover:bg-[#1a1a2e] transition-colors text-[#6b5a4e] dark:text-[#888]"
+            title="Settings"
+          >
+            <Settings className="w-4 h-4" />
           </button>
           <button
             onClick={() => setShowAbout(true)}
@@ -154,14 +162,79 @@ export default function GameScreen({
             </h2>
             <div className="space-y-3 text-[#4a3728] dark:text-[#a89880] text-sm leading-relaxed">
               <p><strong>Goal:</strong> Bear off all 15 checkers before your opponent.</p>
-              <p><strong>White</strong> moves from high to low points (toward point 1). <strong>Black</strong> moves from low to high (toward point 24).</p>
+              <p><strong>White</strong> moves from point 1 toward point 24 (home board: points 19-24). <strong>Black</strong> moves from point 24 toward point 1 (home board: points 1-6).</p>
               <p><strong>Roll dice</strong> on your turn, then click a checker and click where to move it. Green-highlighted points are valid destinations.</p>
+              <p><strong>Doubles:</strong> Rolling doubles gives you 4 moves of that value instead of 2.</p>
               <p><strong>Hitting:</strong> Landing on a single opponent checker sends it to the bar.</p>
               <p><strong>Bar:</strong> You must re-enter checkers from the bar before making other moves.</p>
               <p><strong>Bearing off:</strong> Once all checkers are in your home board, you can start removing them.</p>
+              <p><strong>Video Chat:</strong> Grant camera/mic access to see and hear your opponent.</p>
             </div>
             <button
               onClick={() => setShowAbout(false)}
+              className="mt-6 w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showConfig && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowConfig(false)}
+        >
+          <div
+            className="bg-white dark:bg-[#1a1a2e] rounded-2xl p-8 max-w-sm w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold text-[#2c1810] dark:text-[#e8e0d4] mb-6">
+              Settings
+            </h2>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-[#2c1810] dark:text-[#e8e0d4]">Theme</div>
+                  <div className="text-sm text-[#8b7355] dark:text-[#666]">
+                    {isDark ? "Dark Mode" : "Light Mode"}
+                  </div>
+                </div>
+                <button
+                  onClick={onToggleTheme}
+                  className={`relative w-14 h-7 rounded-full transition-colors ${
+                    isDark ? "bg-amber-500" : "bg-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                      isDark ? "translate-x-7" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+              <div>
+                <div className="font-medium text-[#2c1810] dark:text-[#e8e0d4] mb-1">Movement Direction</div>
+                <div className="text-sm text-[#8b7355] dark:text-[#666] space-y-1">
+                  <p>White: Point 1 → Point 24 (bears off at 24)</p>
+                  <p>Black: Point 24 → Point 1 (bears off at 1)</p>
+                </div>
+              </div>
+              <div>
+                <div className="font-medium text-[#2c1810] dark:text-[#e8e0d4] mb-1">Your Color</div>
+                <div className="text-sm text-[#8b7355] dark:text-[#666]">
+                  Playing as <span className="font-bold text-amber-600 dark:text-amber-400">{myColor === "white" ? "White" : "Black"}</span>
+                </div>
+              </div>
+              <div>
+                <div className="font-medium text-[#2c1810] dark:text-[#e8e0d4] mb-1">Game ID</div>
+                <div className="text-sm font-mono text-amber-600 dark:text-amber-400">
+                  {gameId}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowConfig(false)}
               className="mt-6 w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors"
             >
               Close
@@ -185,6 +258,9 @@ export default function GameScreen({
             <div className="px-6 py-4 bg-[#f5f0e8] dark:bg-[#0a0a1a] rounded-xl font-mono text-3xl tracking-[0.3em] text-amber-700 dark:text-amber-400 font-bold mb-4">
               {gameId}
             </div>
+            <p className="text-sm text-[#8b7355] dark:text-[#666] mb-4">
+              Share this code with your friend so they can join the game.
+            </p>
             <button
               onClick={copyGameId}
               className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors"

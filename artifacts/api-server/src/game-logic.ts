@@ -18,16 +18,22 @@ export interface GameState {
   lastMove: string | null;
 }
 
+export interface ValidMove {
+  from: number;
+  to: number;
+  die: number;
+}
+
 export function createInitialBoard(): BoardState {
   const points = new Array(24).fill(0);
-  points[0] = 2;
-  points[5] = -5;
-  points[7] = -3;
-  points[11] = 5;
-  points[12] = -5;
-  points[16] = 3;
-  points[18] = 5;
-  points[23] = -2;
+  points[0] = -2;
+  points[5] = 5;
+  points[7] = 3;
+  points[11] = -5;
+  points[12] = 5;
+  points[16] = -3;
+  points[18] = -5;
+  points[23] = 2;
   return {
     points,
     whiteBar: 0,
@@ -62,28 +68,16 @@ export function getRemainingMoves(dice: number[]): number[] {
   return [...dice];
 }
 
-function isWhite(val: number): boolean {
-  return val > 0;
-}
-
-function isBlack(val: number): boolean {
-  return val < 0;
-}
-
-function checkerCount(val: number): number {
-  return Math.abs(val);
-}
-
 function allCheckersInHome(board: BoardState, player: PlayerColor): boolean {
   if (player === 'white') {
     if (board.whiteBar > 0) return false;
-    for (let i = 6; i < 24; i++) {
+    for (let i = 0; i < 18; i++) {
       if (board.points[i] > 0) return false;
     }
     return true;
   } else {
     if (board.blackBar > 0) return false;
-    for (let i = 0; i < 18; i++) {
+    for (let i = 6; i < 24; i++) {
       if (board.points[i] < 0) return false;
     }
     return true;
@@ -94,12 +88,25 @@ function canBearOff(board: BoardState, player: PlayerColor): boolean {
   return allCheckersInHome(board, player);
 }
 
+function findHighestCheckerPoint(board: BoardState, player: PlayerColor): number {
+  if (player === 'white') {
+    for (let i = 18; i <= 23; i++) {
+      if (board.points[i] > 0) return i;
+    }
+  } else {
+    for (let i = 5; i >= 0; i--) {
+      if (board.points[i] < 0) return i;
+    }
+  }
+  return -1;
+}
+
 export function getValidMoves(
   board: BoardState,
   player: PlayerColor,
   remainingMoves: number[]
-): { from: number; to: number; die: number }[] {
-  const moves: { from: number; to: number; die: number }[] = [];
+): ValidMove[] {
+  const moves: ValidMove[] = [];
   const uniqueDice = [...new Set(remainingMoves)];
 
   for (const die of uniqueDice) {
@@ -122,35 +129,39 @@ export function getValidMoves(
 
     for (let i = 0; i < 24; i++) {
       const val = board.points[i];
-      if (player === 'white' && !isWhite(val)) continue;
-      if (player === 'black' && !isBlack(val)) continue;
+      if (player === 'white' && val <= 0) continue;
+      if (player === 'black' && val >= 0) continue;
 
       if (player === 'white') {
-        const target = i - die;
-        if (target >= 0) {
+        const target = i + die;
+        if (target <= 23) {
           if (board.points[target] >= -1) {
             moves.push({ from: i, to: target, die });
           }
         } else if (canBearOff(board, 'white')) {
-          const highestPoint = findHighestCheckerPoint(board, 'white');
-          if (i === highestPoint || target === -1) {
-            moves.push({ from: i, to: -1, die });
-          } else if (target < -1 && i === highestPoint) {
-            moves.push({ from: i, to: -1, die });
+          if (target === 24) {
+            moves.push({ from: i, to: 24, die });
+          } else {
+            const highest = findHighestCheckerPoint(board, 'white');
+            if (i === highest) {
+              moves.push({ from: i, to: 24, die });
+            }
           }
         }
       } else {
-        const target = i + die;
-        if (target <= 23) {
+        const target = i - die;
+        if (target >= 0) {
           if (board.points[target] <= 1) {
             moves.push({ from: i, to: target, die });
           }
         } else if (canBearOff(board, 'black')) {
-          const highestPoint = findHighestCheckerPoint(board, 'black');
-          if (i === highestPoint || target === 24) {
-            moves.push({ from: i, to: 24, die });
-          } else if (target > 24 && i === highestPoint) {
-            moves.push({ from: i, to: 24, die });
+          if (target === -1) {
+            moves.push({ from: i, to: -1, die });
+          } else {
+            const highest = findHighestCheckerPoint(board, 'black');
+            if (i === highest) {
+              moves.push({ from: i, to: -1, die });
+            }
           }
         }
       }
@@ -158,19 +169,6 @@ export function getValidMoves(
   }
 
   return moves;
-}
-
-function findHighestCheckerPoint(board: BoardState, player: PlayerColor): number {
-  if (player === 'white') {
-    for (let i = 5; i >= 0; i--) {
-      if (board.points[i] > 0) return i;
-    }
-  } else {
-    for (let i = 18; i <= 23; i++) {
-      if (board.points[i] < 0) return i;
-    }
-  }
-  return -1;
 }
 
 export function applyMove(
@@ -196,10 +194,10 @@ export function applyMove(
       newBoard.points[from]--;
     }
 
-    if (to === -1) {
+    if (to === 24) {
       newBoard.whiteOff++;
     } else {
-      if (isBlack(newBoard.points[to]) && checkerCount(newBoard.points[to]) === 1) {
+      if (newBoard.points[to] === -1) {
         newBoard.points[to] = 0;
         newBoard.blackBar++;
         hitOpponent = true;
@@ -213,10 +211,10 @@ export function applyMove(
       newBoard.points[from]++;
     }
 
-    if (to === 24) {
+    if (to === -1) {
       newBoard.blackOff++;
     } else {
-      if (isWhite(newBoard.points[to]) && checkerCount(newBoard.points[to]) === 1) {
+      if (newBoard.points[to] === 1) {
         newBoard.points[to] = 0;
         newBoard.whiteBar++;
         hitOpponent = true;
@@ -253,4 +251,44 @@ export function hasAnyValidMoves(
   remainingMoves: number[]
 ): boolean {
   return getValidMoves(board, player, remainingMoves).length > 0;
+}
+
+export function getValidMovesForFullTurn(
+  board: BoardState,
+  player: PlayerColor,
+  remainingMoves: number[]
+): ValidMove[] {
+  const directMoves = getValidMoves(board, player, remainingMoves);
+  if (directMoves.length === 0) return [];
+
+  if (remainingMoves.length <= 1) return directMoves;
+
+  const uniqueDice = [...new Set(remainingMoves)];
+  const isDoubles = uniqueDice.length === 1;
+
+  if (isDoubles) return directMoves;
+
+  const movesUsingBothDice: ValidMove[] = [];
+
+  for (const move of directMoves) {
+    const { newBoard } = applyMove(board, player, move.from, move.to);
+    const newRemaining = [...remainingMoves];
+    const dieIdx = newRemaining.indexOf(move.die);
+    if (dieIdx !== -1) newRemaining.splice(dieIdx, 1);
+
+    const followUpMoves = getValidMoves(newBoard, player, newRemaining);
+    if (followUpMoves.length > 0) {
+      movesUsingBothDice.push(move);
+    }
+  }
+
+  if (movesUsingBothDice.length > 0) {
+    return movesUsingBothDice;
+  }
+
+  const higherDie = Math.max(...uniqueDice);
+  const higherDieMoves = directMoves.filter(m => m.die === higherDie);
+  if (higherDieMoves.length > 0) return higherDieMoves;
+
+  return directMoves;
 }
