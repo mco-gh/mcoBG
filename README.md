@@ -4,15 +4,19 @@ Real-time multiplayer Backgammon in the browser. Two players connect through a
 6-character Game ID, play a fully rule-validated game, and optionally video-chat
 via WebRTC.
 
-## Screenshots
+## Demo
+
+To try mcoBG, start the dev servers (see [Getting Started](#getting-started)),
+then open the app in two browser tabs. Create a game in one tab, copy the
+6-character Game ID, and join from the other.
+
+<!-- To add screenshots: capture the landing page and game board, save them as
+     docs/screenshot-landing.png and docs/screenshot-board.png, then uncomment:
 
 | Landing page | Game board (dark theme) |
 |---|---|
 | ![Landing](docs/screenshot-landing.png) | ![Board](docs/screenshot-board.png) |
-
-> **Note:** To generate these screenshots locally, start the dev servers, create
-> a game in one tab, join from another, and capture the browser window. Place the
-> images in `docs/`.
+-->
 
 ## Features
 
