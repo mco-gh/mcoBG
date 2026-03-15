@@ -717,7 +717,7 @@ export default function BackgammonBoard({
 
   function renderOffBoard(count: number, color: "white" | "black") {
     const x = BOARD_W - 18;
-    const isTop = color === "white";
+    const isTop = color === "black";
     return (
       <g>
         {Array.from({ length: Math.min(count, 5) }).map((_, i) => {
