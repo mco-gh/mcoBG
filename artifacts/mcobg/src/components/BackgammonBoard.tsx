@@ -29,7 +29,7 @@ const FRAME_LIGHT = "#9b5a30";
 const FRAME_DARK = "#5c2810";
 const SURFACE_COLOR = "#d4b894";
 const SURFACE_DARK = "#c8a87c";
-const BAR_COLOR = "#8b5a2b";
+const BAR_COLOR = "#7a3418";
 const POINT_DARK = "#3d2010";
 const POINT_RED = "#8b2a14";
 const HIGHLIGHT_GREEN = "#4ade80";
@@ -94,9 +94,9 @@ function CheckerDefs() {
         <stop offset="100%" stopColor={SURFACE_DARK} />
       </linearGradient>
       <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor="#6b4420" />
-        <stop offset="50%" stopColor={BAR_COLOR} />
-        <stop offset="100%" stopColor="#6b4420" />
+        <stop offset="0%" stopColor={FRAME_DARK} />
+        <stop offset="50%" stopColor={FRAME_COLOR} />
+        <stop offset="100%" stopColor={FRAME_DARK} />
       </linearGradient>
       <filter id="checkerShadow">
         <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#000" floodOpacity="0.35" />
@@ -121,7 +121,7 @@ function Checker({
   shadow?: boolean;
 }) {
   const fill = color === "white" ? "url(#whiteCheckerGrad)" : "url(#blackCheckerGrad)";
-  const strokeColor = color === "white" ? "#8a7a60" : "#222";
+  const strokeColor = color === "white" ? "#4a4038" : "#222";
   const ringColor = color === "white" ? "#c4b498" : "#444";
 
   return (
