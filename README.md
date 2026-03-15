@@ -4,6 +4,16 @@ Real-time multiplayer Backgammon in the browser. Two players connect through a
 6-character Game ID, play a fully rule-validated game, and optionally video-chat
 via WebRTC.
 
+## Screenshots
+
+| Landing page | Game board (dark theme) |
+|---|---|
+| ![Landing](docs/screenshot-landing.png) | ![Board](docs/screenshot-board.png) |
+
+> **Note:** To generate these screenshots locally, start the dev servers, create
+> a game in one tab, join from another, and capture the browser window. Place the
+> images in `docs/`.
+
 ## Features
 
 - **Create / Join** games with a shareable 6-character code
