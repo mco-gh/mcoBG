@@ -1,0 +1,26 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "gPEEzAGI5sWLGoZq27rDf"
+uri = "file://attached_assets/generated_images/logo_checkers_yinyang.png"
+type = "image"
+title = "Option A — Checker Yin-Yang"
+
+[[outputs]]
+id = "cc2JMZFJy9EzHcgOtI-kv"
+uri = "file://attached_assets/generated_images/logo_single_die.png"
+type = "image"
+title = "Option B — Solo Die"
+
+[[outputs]]
+id = "6Wpu1g-N0GaB_cLwb_zUY"
+uri = "file://attached_assets/generated_images/logo_board_topdown.png"
+type = "image"
+title = "Option C — Board Top-Down"
+
+[[outputs]]
+id = "PG7aLcntKTqbon5dJ52A7"
+uri = "file://attached_assets/generated_images/logo_neon_dice.png"
+type = "image"
+title = "Option D — Neon Dice"
