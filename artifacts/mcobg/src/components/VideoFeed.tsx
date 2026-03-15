@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Peer from "peerjs";
 import { getSocket } from "@/lib/socket";
 import { Video, VideoOff, Mic, MicOff } from "lucide-react";
@@ -6,9 +6,10 @@ import { Video, VideoOff, Mic, MicOff } from "lucide-react";
 interface Props {
   gameId: string;
   myColor: string;
+  onPeerIdReady?: (peerId: string) => void;
 }
 
-export default function VideoFeed({ gameId, myColor }: Props) {
+export default function VideoFeed({ gameId, myColor, onPeerIdReady }: Props) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [videoEnabled, setVideoEnabled] = useState(true);
@@ -17,6 +18,9 @@ export default function VideoFeed({ gameId, myColor }: Props) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerRef = useRef<Peer | null>(null);
+
+  const onPeerIdReadyRef = useRef(onPeerIdReady);
+  onPeerIdReadyRef.current = onPeerIdReady;
 
   useEffect(() => {
     let mounted = true;
@@ -44,6 +48,7 @@ export default function VideoFeed({ gameId, myColor }: Props) {
         peer.on("open", (peerId) => {
           const socket = getSocket();
           socket.emit("share-peer-id", { gameId, peerId });
+          onPeerIdReadyRef.current?.(peerId);
         });
 
         peer.on("call", (call) => {

@@ -26,6 +26,7 @@ artifacts-monorepo/
 │   ├── api-server/         # Express API server + Socket.io game logic
 │   └── mcobg/              # React + Vite frontend for Backgammon game
 ├── lib/                    # Shared libraries
+│   ├── backgammon/         # Shared game types and constants (used by api-server + mcobg)
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
@@ -55,7 +56,7 @@ artifacts-monorepo/
 - Animated dice rolling
 - PeerJS video/audio chat between players
 - Dark mode (default) / light mode toggle
-- Modals: About/How to Play, Config (theme toggle, movement direction, player info), Connect (share Game ID)
+- Modals: About/How to Play, Config (theme toggle, board direction toggle, movement info, player info), Connect (Game ID + Peer ID with copy)
 - Rematch support
 - Graceful disconnection handling
 

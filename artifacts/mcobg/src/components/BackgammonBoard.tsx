@@ -8,6 +8,7 @@ interface Props {
   selectablePoints: Set<number>;
   isMyTurn: boolean;
   hasDice: boolean;
+  flipped?: boolean;
   onSelectPoint: (index: number) => void;
   onSelectBar: () => void;
 }
@@ -49,12 +50,14 @@ export default function BackgammonBoard({
   selectablePoints,
   isMyTurn,
   hasDice,
+  flipped = false,
   onSelectPoint,
   onSelectBar,
 }: Props) {
   const pointPositions: { x: number; isTop: boolean }[] = [];
 
-  for (let i = 0; i < 24; i++) {
+  for (let rawI = 0; rawI < 24; rawI++) {
+    const i = flipped ? 23 - rawI : rawI;
     let x: number;
     let isTop: boolean;
 

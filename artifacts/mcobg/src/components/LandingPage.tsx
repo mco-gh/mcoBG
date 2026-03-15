@@ -99,8 +99,9 @@ export default function LandingPage({
                 checkers wins.
               </p>
               <p>
-                <strong>Setup:</strong> White moves from point 24 toward point 1
-                (home). Black moves from point 1 toward point 24 (home).
+                <strong>Setup:</strong> White moves from point 1 toward point 24
+                (home board: points 19-24). Black moves from point 24 toward
+                point 1 (home board: points 1-6).
               </p>
               <p>
                 <strong>Rolling:</strong> Roll two dice on your turn. If you roll
@@ -119,8 +120,8 @@ export default function LandingPage({
               </p>
               <p>
                 <strong>Bearing Off:</strong> Once all your checkers are in your
-                home board (points 1-6 for White, 19-24 for Black), you can begin
-                bearing them off.
+                home board (points 19-24 for White, points 1-6 for Black), you
+                can begin bearing them off.
               </p>
               <p>
                 <strong>Video Chat:</strong> You'll be prompted for camera/mic

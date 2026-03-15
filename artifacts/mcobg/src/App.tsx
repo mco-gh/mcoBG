@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { useGame } from "@/hooks/useGame";
 import { useTheme } from "@/hooks/useTheme";
 import LandingPage from "@/components/LandingPage";
@@ -7,6 +8,11 @@ import GameScreen from "@/components/GameScreen";
 function App() {
   const game = useGame();
   const { isDark, toggleTheme } = useTheme();
+  const [boardFlipped, setBoardFlipped] = useState(false);
+
+  const toggleBoardFlip = useCallback(() => {
+    setBoardFlipped((prev) => !prev);
+  }, []);
 
   if (game.phase === "landing") {
     return (
@@ -42,7 +48,9 @@ function App() {
         isRolling={game.isRolling}
         opponentDisconnected={game.opponentDisconnected}
         isDark={isDark}
+        boardFlipped={boardFlipped}
         onToggleTheme={toggleTheme}
+        onToggleBoardFlip={toggleBoardFlip}
         onSelectPoint={game.selectPoint}
         onSelectBar={game.selectBarChecker}
         onRoll={game.rollTheDice}

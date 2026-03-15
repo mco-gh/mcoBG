@@ -3,8 +3,9 @@ import DiceTray from "./DiceTray";
 import StatusBar from "./StatusBar";
 import VideoFeed from "./VideoFeed";
 import type { GameState, PlayerColor } from "@/lib/game-types";
-import { Sun, Moon, HelpCircle, Settings, Share2, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { MOVEMENT_RULES } from "@/lib/game-types";
+import { Sun, Moon, HelpCircle, Settings, Share2, RotateCcw, Copy, Check } from "lucide-react";
+import { useState, useCallback } from "react";
 
 interface Props {
   gameState: GameState;
@@ -19,7 +20,9 @@ interface Props {
   isRolling: boolean;
   opponentDisconnected: boolean;
   isDark: boolean;
+  boardFlipped: boolean;
   onToggleTheme: () => void;
+  onToggleBoardFlip: () => void;
   onSelectPoint: (index: number) => void;
   onSelectBar: () => void;
   onRoll: () => void;
@@ -40,7 +43,9 @@ export default function GameScreen({
   isRolling,
   opponentDisconnected,
   isDark,
+  boardFlipped,
   onToggleTheme,
+  onToggleBoardFlip,
   onSelectPoint,
   onSelectBar,
   onRoll,
@@ -50,12 +55,25 @@ export default function GameScreen({
   const [showAbout, setShowAbout] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedGameId, setCopiedGameId] = useState(false);
+  const [copiedPeerId, setCopiedPeerId] = useState(false);
+  const [myPeerId, setMyPeerId] = useState<string | null>(null);
+
+  const handlePeerIdReady = useCallback((peerId: string) => {
+    setMyPeerId(peerId);
+  }, []);
 
   const copyGameId = () => {
     navigator.clipboard.writeText(gameId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedGameId(true);
+    setTimeout(() => setCopiedGameId(false), 2000);
+  };
+
+  const copyPeerId = () => {
+    if (!myPeerId) return;
+    navigator.clipboard.writeText(myPeerId);
+    setCopiedPeerId(true);
+    setTimeout(() => setCopiedPeerId(false), 2000);
   };
 
   return (
@@ -118,6 +136,7 @@ export default function GameScreen({
           selectablePoints={selectablePoints}
           isMyTurn={isMyTurn}
           hasDice={hasDice && hasRemainingMoves}
+          flipped={boardFlipped}
           onSelectPoint={onSelectPoint}
           onSelectBar={onSelectBar}
         />
@@ -146,7 +165,7 @@ export default function GameScreen({
         )}
       </div>
 
-      <VideoFeed gameId={gameId} myColor={myColor} />
+      <VideoFeed gameId={gameId} myColor={myColor} onPeerIdReady={handlePeerIdReady} />
 
       {showAbout && (
         <div
@@ -213,11 +232,31 @@ export default function GameScreen({
                   />
                 </button>
               </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-[#2c1810] dark:text-[#e8e0d4]">Board Direction</div>
+                  <div className="text-sm text-[#8b7355] dark:text-[#666]">
+                    {boardFlipped ? "Flipped" : "Default"}
+                  </div>
+                </div>
+                <button
+                  onClick={onToggleBoardFlip}
+                  className={`relative w-14 h-7 rounded-full transition-colors ${
+                    boardFlipped ? "bg-amber-500" : "bg-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                      boardFlipped ? "translate-x-7" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
               <div>
                 <div className="font-medium text-[#2c1810] dark:text-[#e8e0d4] mb-1">Movement Direction</div>
                 <div className="text-sm text-[#8b7355] dark:text-[#666] space-y-1">
-                  <p>White: Point 1 → Point 24 (bears off at 24)</p>
-                  <p>Black: Point 24 → Point 1 (bears off at 1)</p>
+                  <p>{MOVEMENT_RULES.white.description} (home: 19-24)</p>
+                  <p>{MOVEMENT_RULES.black.description} (home: 1-6)</p>
                 </div>
               </div>
               <div>
@@ -253,23 +292,42 @@ export default function GameScreen({
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-bold text-[#2c1810] dark:text-[#e8e0d4] mb-4">
-              Game ID
+              Connection Info
             </h2>
-            <div className="px-6 py-4 bg-[#f5f0e8] dark:bg-[#0a0a1a] rounded-xl font-mono text-3xl tracking-[0.3em] text-amber-700 dark:text-amber-400 font-bold mb-4">
-              {gameId}
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm text-[#8b7355] dark:text-[#666] mb-2">Game ID</div>
+                <div className="px-6 py-4 bg-[#f5f0e8] dark:bg-[#0a0a1a] rounded-xl font-mono text-3xl tracking-[0.3em] text-amber-700 dark:text-amber-400 font-bold">
+                  {gameId}
+                </div>
+                <button
+                  onClick={copyGameId}
+                  className="mt-2 w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  {copiedGameId ? <><Check className="w-4 h-4" /> Copied!</> : <><Copy className="w-4 h-4" /> Copy Game ID</>}
+                </button>
+              </div>
+              <div>
+                <div className="text-sm text-[#8b7355] dark:text-[#666] mb-2">Peer ID (Video Chat)</div>
+                <div className="px-4 py-3 bg-[#f5f0e8] dark:bg-[#0a0a1a] rounded-xl font-mono text-xs text-[#6b5a4e] dark:text-[#888] break-all">
+                  {myPeerId ?? "Connecting..."}
+                </div>
+                {myPeerId && (
+                  <button
+                    onClick={copyPeerId}
+                    className="mt-2 w-full py-2 bg-[#4a3728] hover:bg-[#3d2b1f] dark:bg-[#16213e] dark:hover:bg-[#0f3460] text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    {copiedPeerId ? <><Check className="w-4 h-4" /> Copied!</> : <><Copy className="w-4 h-4" /> Copy Peer ID</>}
+                  </button>
+                )}
+              </div>
             </div>
-            <p className="text-sm text-[#8b7355] dark:text-[#666] mb-4">
-              Share this code with your friend so they can join the game.
+            <p className="text-sm text-[#8b7355] dark:text-[#666] mt-4">
+              Share the Game ID with your friend so they can join.
             </p>
             <button
-              onClick={copyGameId}
-              className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors"
-            >
-              {copied ? "Copied!" : "Copy to Clipboard"}
-            </button>
-            <button
               onClick={() => setShowConnect(false)}
-              className="mt-2 w-full py-2 text-[#8b7355] dark:text-[#666] hover:text-[#2c1810] dark:hover:text-white transition-colors"
+              className="mt-4 w-full py-2 text-[#8b7355] dark:text-[#666] hover:text-[#2c1810] dark:hover:text-white transition-colors"
             >
               Close
             </button>

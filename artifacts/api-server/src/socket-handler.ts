@@ -8,52 +8,23 @@ import {
   applyMove,
   checkWinner,
   hasAnyValidMoves,
-  type GameState,
-  type PlayerColor,
-  type ValidMove,
 } from "./game-logic.js";
+import type {
+  GameState,
+  PlayerColor,
+  ValidMove,
+  CreateGameResponse,
+  JoinGameResponse,
+  RollDiceResponse,
+  MovePieceResponse,
+  GenericResponse,
+} from "@workspace/backgammon";
 
 interface GameRoom {
   gameId: string;
   state: GameState;
   players: { white: string | null; black: string | null };
   peerIds: { white: string | null; black: string | null };
-}
-
-interface CreateGameResponse {
-  success: boolean;
-  gameId?: string;
-  color?: PlayerColor;
-  state?: GameState;
-  error?: string;
-}
-
-interface JoinGameResponse {
-  success: boolean;
-  gameId?: string;
-  color?: PlayerColor;
-  state?: GameState;
-  error?: string;
-}
-
-interface RollDiceResponse {
-  success: boolean;
-  dice?: number[];
-  noMoves?: boolean;
-  validMoves?: ValidMove[];
-  error?: string;
-}
-
-interface MovePieceResponse {
-  success: boolean;
-  hitOpponent?: boolean;
-  validMoves?: ValidMove[];
-  error?: string;
-}
-
-interface GenericResponse {
-  success: boolean;
-  error?: string;
 }
 
 const games = new Map<string, GameRoom>();
