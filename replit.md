@@ -60,6 +60,12 @@ artifacts-monorepo/
 - Rematch support
 - Graceful disconnection handling
 
+### Frontend Routing
+
+Uses wouter v3 with `<Router base={BASE_URL}>`:
+- `/` — Main game app (landing → waiting → playing → gameover phases)
+- `/dev` — Interactive dev console for testing Socket.io events directly
+
 ### Key Files
 
 - `artifacts/api-server/src/socket-handler.ts` — Socket.io event handlers for game rooms
@@ -70,6 +76,7 @@ artifacts-monorepo/
 - `artifacts/mcobg/src/components/VideoFeed.tsx` — PeerJS video chat component
 - `artifacts/mcobg/src/components/GameScreen.tsx` — Main game UI with modals
 - `artifacts/mcobg/src/components/LandingPage.tsx` — Create/Join game landing
+- `artifacts/mcobg/src/pages/DevConsole.tsx` — Interactive Socket.io testing panel
 - `artifacts/mcobg/src/lib/socket.ts` — Socket.io client singleton (path: /api/socket.io)
 
 ### Socket.io Events
