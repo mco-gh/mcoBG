@@ -483,8 +483,8 @@ export default function BackgammonBoard({
         const isSelectable = selectablePoints.has(pointIndex) && isMyTurn && hasDice;
         const isEven = pointIndex % 2 === 0;
 
-        const tipY = isTop ? MARGIN_Y : BOARD_H - MARGIN_Y;
-        const baseY = isTop ? MARGIN_Y + POINT_H : BOARD_H - MARGIN_Y - POINT_H;
+        const tipY = isTop ? MARGIN_Y + POINT_H : BOARD_H - MARGIN_Y - POINT_H;
+        const baseY = isTop ? MARGIN_Y : BOARD_H - MARGIN_Y;
 
         let fill: string;
         if (isHighlighted) {

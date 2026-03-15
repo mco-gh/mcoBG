@@ -47,13 +47,13 @@ export function getRemainingMoves(dice: number[]): number[] {
 function allCheckersInHome(board: BoardState, player: PlayerColor): boolean {
   if (player === 'white') {
     if (board.whiteBar > 0) return false;
-    for (let i = 0; i < 18; i++) {
+    for (let i = 6; i < 24; i++) {
       if (board.points[i] > 0) return false;
     }
     return true;
   } else {
     if (board.blackBar > 0) return false;
-    for (let i = 6; i < 24; i++) {
+    for (let i = 0; i < 18; i++) {
       if (board.points[i] < 0) return false;
     }
     return true;
@@ -66,11 +66,11 @@ function canBearOff(board: BoardState, player: PlayerColor): boolean {
 
 function findHighestCheckerPoint(board: BoardState, player: PlayerColor): number {
   if (player === 'white') {
-    for (let i = 18; i <= 23; i++) {
+    for (let i = 5; i >= 0; i--) {
       if (board.points[i] > 0) return i;
     }
   } else {
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 18; i <= 23; i++) {
       if (board.points[i] < 0) return i;
     }
   }
@@ -87,7 +87,7 @@ export function getValidMoves(
 
   for (const die of uniqueDice) {
     if (player === 'white' && board.whiteBar > 0) {
-      const target = die - 1;
+      const target = 24 - die;
       const pointVal = board.points[target];
       if (pointVal >= -1) {
         moves.push({ from: -1, to: target, die });
@@ -95,7 +95,7 @@ export function getValidMoves(
       continue;
     }
     if (player === 'black' && board.blackBar > 0) {
-      const target = 24 - die;
+      const target = die - 1;
       const pointVal = board.points[target];
       if (pointVal <= 1) {
         moves.push({ from: 24, to: target, die });
@@ -109,34 +109,34 @@ export function getValidMoves(
       if (player === 'black' && val >= 0) continue;
 
       if (player === 'white') {
-        const target = i + die;
-        if (target <= 23) {
+        const target = i - die;
+        if (target >= 0) {
           if (board.points[target] >= -1) {
             moves.push({ from: i, to: target, die });
           }
         } else if (canBearOff(board, 'white')) {
-          if (target === 24) {
-            moves.push({ from: i, to: 24, die });
+          if (target === -1) {
+            moves.push({ from: i, to: -1, die });
           } else {
             const highest = findHighestCheckerPoint(board, 'white');
             if (i === highest) {
-              moves.push({ from: i, to: 24, die });
+              moves.push({ from: i, to: -1, die });
             }
           }
         }
       } else {
-        const target = i - die;
-        if (target >= 0) {
+        const target = i + die;
+        if (target <= 23) {
           if (board.points[target] <= 1) {
             moves.push({ from: i, to: target, die });
           }
         } else if (canBearOff(board, 'black')) {
-          if (target === -1) {
-            moves.push({ from: i, to: -1, die });
+          if (target === 24) {
+            moves.push({ from: i, to: 24, die });
           } else {
             const highest = findHighestCheckerPoint(board, 'black');
             if (i === highest) {
-              moves.push({ from: i, to: -1, die });
+              moves.push({ from: i, to: 24, die });
             }
           }
         }
@@ -170,7 +170,7 @@ export function applyMove(
       newBoard.points[from]--;
     }
 
-    if (to === 24) {
+    if (to === -1) {
       newBoard.whiteOff++;
     } else {
       if (newBoard.points[to] === -1) {
@@ -187,7 +187,7 @@ export function applyMove(
       newBoard.points[from]++;
     }
 
-    if (to === -1) {
+    if (to === 24) {
       newBoard.blackOff++;
     } else {
       if (newBoard.points[to] === 1) {
