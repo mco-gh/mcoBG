@@ -285,13 +285,24 @@ export default function BackgammonBoard({
   );
 
   const onPointerCancel = useCallback(
-    (e: React.PointerEvent) => {
+    (_e: React.PointerEvent) => {
       const from = cancelDrag();
       if (from !== null) {
         onSelectPoint(from);
       }
     },
     [cancelDrag, onSelectPoint]
+  );
+
+  const onLostPointerCapture = useCallback(
+    (_e: React.PointerEvent) => {
+      if (!activeDrag && !pendingRef.current) return;
+      const from = cancelDrag();
+      if (from !== null) {
+        onSelectPoint(from);
+      }
+    },
+    [activeDrag, cancelDrag, onSelectPoint]
   );
 
   useEffect(() => {
@@ -316,6 +327,7 @@ export default function BackgammonBoard({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onLostPointerCapture={onLostPointerCapture}
     >
       <rect
         x={0}
