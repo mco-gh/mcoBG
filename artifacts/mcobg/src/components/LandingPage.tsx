@@ -21,7 +21,7 @@ export default function LandingPage({
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#f5f0e8] dark:bg-[#0a0a1a] transition-colors p-4">
       <div className="text-center mb-12">
         <div className="flex items-center justify-center gap-3 mb-4">
-          <img src="/logo.png" alt="mcoBG logo" className="w-14 h-14 object-contain" />
+          <img src="/logo.png" alt="mcoBG logo" className="w-20 h-20 object-contain" />
           <h1 className="text-5xl font-bold text-[#2c1810] dark:text-[#e8e0d4] tracking-tight">
             mcoBG
           </h1>
