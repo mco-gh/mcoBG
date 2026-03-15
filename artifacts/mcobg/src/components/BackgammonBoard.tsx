@@ -1,3 +1,4 @@
+import { useRef, useState, useCallback, useEffect } from "react";
 import type { BoardState, PlayerColor } from "@/lib/game-types";
 
 interface Props {
@@ -21,6 +22,7 @@ const BAR_W = 40;
 const CHECKER_R = 20;
 const MARGIN_X = 30;
 const MARGIN_Y = 20;
+const DRAG_THRESHOLD = 4;
 
 function getCheckerPositions(
   count: number,
@@ -42,6 +44,22 @@ function getCheckerPositions(
   return positions;
 }
 
+interface PendingDrag {
+  fromPoint: number;
+  color: "white" | "black";
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+}
+
+interface ActiveDrag {
+  fromPoint: number;
+  color: "white" | "black";
+  pointerId: number;
+  svgX: number;
+  svgY: number;
+}
+
 export default function BackgammonBoard({
   board,
   myColor,
@@ -54,6 +72,11 @@ export default function BackgammonBoard({
   onSelectPoint,
   onSelectBar,
 }: Props) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
+  const pendingRef = useRef<PendingDrag | null>(null);
+  const dragFromRef = useRef<number | null>(null);
+
   function getSlotPosition(slot: number): { x: number; isTop: boolean } {
     let x: number;
     let isTop: boolean;
@@ -87,11 +110,212 @@ export default function BackgammonBoard({
   const blackBarClickable =
     isMyTurn && hasDice && myColor === "black" && board.blackBar > 0;
 
+  const screenToSvg = useCallback(
+    (clientX: number, clientY: number): { x: number; y: number } | null => {
+      const svg = svgRef.current;
+      if (!svg) return null;
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return null;
+      const inv = ctm.inverse();
+      return {
+        x: inv.a * clientX + inv.c * clientY + inv.e,
+        y: inv.b * clientX + inv.d * clientY + inv.f,
+      };
+    },
+    []
+  );
+
+  const hitTestPoint = useCallback(
+    (svgX: number, svgY: number): number | null => {
+      const bearOffX = BOARD_W - MARGIN_X + 4;
+      if (svgX >= bearOffX && svgX <= bearOffX + 20) {
+        if (svgY >= MARGIN_Y && svgY <= MARGIN_Y + 80 && highlightedPoints.has(24)) {
+          return 24;
+        }
+        if (
+          svgY >= BOARD_H - MARGIN_Y - 80 &&
+          svgY <= BOARD_H - MARGIN_Y &&
+          highlightedPoints.has(-1)
+        ) {
+          return -1;
+        }
+      }
+
+      for (const { x, isTop, pointIndex } of pointPositions) {
+        if (!highlightedPoints.has(pointIndex)) continue;
+        const left = x - POINT_W / 2;
+        const right = x + POINT_W / 2;
+        if (svgX < left || svgX > right) continue;
+
+        if (isTop && svgY >= MARGIN_Y && svgY <= MARGIN_Y + POINT_H + CHECKER_R) {
+          return pointIndex;
+        }
+        if (
+          !isTop &&
+          svgY >= BOARD_H - MARGIN_Y - POINT_H - CHECKER_R &&
+          svgY <= BOARD_H - MARGIN_Y
+        ) {
+          return pointIndex;
+        }
+      }
+
+      return null;
+    },
+    [pointPositions, highlightedPoints]
+  );
+
+  const cancelDrag = useCallback(() => {
+    const pid = activeDrag?.pointerId ?? pendingRef.current?.pointerId;
+    const svg = svgRef.current;
+    if (svg && pid != null) {
+      try {
+        svg.releasePointerCapture(pid);
+      } catch (_) {}
+    }
+    setActiveDrag(null);
+    pendingRef.current = null;
+    const from = dragFromRef.current;
+    dragFromRef.current = null;
+    return from;
+  }, [activeDrag]);
+
+  const beginPendingDrag = useCallback(
+    (
+      e: React.PointerEvent,
+      fromPoint: number,
+      checkerColor: "white" | "black"
+    ) => {
+      if (!isMyTurn || !hasDice) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (fromPoint === -1 || fromPoint === 24) {
+        onSelectBar();
+      } else {
+        onSelectPoint(fromPoint);
+      }
+
+      dragFromRef.current = fromPoint;
+      pendingRef.current = {
+        fromPoint,
+        color: checkerColor,
+        pointerId: e.pointerId,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+      };
+
+      const svg = svgRef.current;
+      if (svg) {
+        svg.setPointerCapture(e.pointerId);
+      }
+    },
+    [isMyTurn, hasDice, onSelectPoint, onSelectBar]
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (pendingRef.current && !activeDrag) {
+        const dx = e.clientX - pendingRef.current.startClientX;
+        const dy = e.clientY - pendingRef.current.startClientY;
+        if (Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
+          const pos = screenToSvg(e.clientX, e.clientY);
+          if (pos) {
+            setActiveDrag({
+              fromPoint: pendingRef.current.fromPoint,
+              color: pendingRef.current.color,
+              pointerId: pendingRef.current.pointerId,
+              svgX: pos.x,
+              svgY: pos.y,
+            });
+          }
+          pendingRef.current = null;
+        }
+        return;
+      }
+
+      if (!activeDrag) return;
+      const pos = screenToSvg(e.clientX, e.clientY);
+      if (!pos) return;
+      setActiveDrag((prev) =>
+        prev ? { ...prev, svgX: pos.x, svgY: pos.y } : null
+      );
+    },
+    [activeDrag, screenToSvg]
+  );
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (pendingRef.current) {
+        const svg = svgRef.current;
+        if (svg) {
+          try {
+            svg.releasePointerCapture(e.pointerId);
+          } catch (_) {}
+        }
+        pendingRef.current = null;
+        dragFromRef.current = null;
+        return;
+      }
+
+      if (!activeDrag) return;
+
+      const from = dragFromRef.current;
+      const svg = svgRef.current;
+      if (svg) {
+        try {
+          svg.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+      }
+
+      const pos = screenToSvg(e.clientX, e.clientY);
+      if (pos) {
+        const target = hitTestPoint(pos.x, pos.y);
+        if (target !== null) {
+          onSelectPoint(target);
+        } else if (from !== null) {
+          onSelectPoint(from);
+        }
+      }
+
+      setActiveDrag(null);
+      dragFromRef.current = null;
+    },
+    [activeDrag, screenToSvg, hitTestPoint, onSelectPoint]
+  );
+
+  const onPointerCancel = useCallback(
+    (e: React.PointerEvent) => {
+      const from = cancelDrag();
+      if (from !== null) {
+        onSelectPoint(from);
+      }
+    },
+    [cancelDrag, onSelectPoint]
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && (activeDrag || pendingRef.current)) {
+        const from = cancelDrag();
+        if (from !== null) {
+          onSelectPoint(from);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeDrag, cancelDrag, onSelectPoint]);
+
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}
-      className="w-full max-w-[800px] mx-auto"
-      style={{ aspectRatio: `${BOARD_W}/${BOARD_H}` }}
+      className="w-full max-w-[800px] mx-auto select-none"
+      style={{ aspectRatio: `${BOARD_W}/${BOARD_H}`, touchAction: "none" }}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
     >
       <rect
         x={0}
@@ -154,7 +378,8 @@ export default function BackgammonBoard({
             >
               {pointIndex + 1}
             </text>
-            {board.points[pointIndex] !== 0 && renderCheckers(board.points[pointIndex], x, isTop, pointIndex)}
+            {board.points[pointIndex] !== 0 &&
+              renderCheckers(board.points[pointIndex], x, isTop, pointIndex)}
           </g>
         );
       })}
@@ -202,44 +427,100 @@ export default function BackgammonBoard({
           onClick={() => onSelectPoint(highlightedPoints.has(24) ? 24 : -1)}
         />
       )}
+
+      {activeDrag && (
+        <g style={{ pointerEvents: "none" }}>
+          <circle
+            cx={activeDrag.svgX}
+            cy={activeDrag.svgY}
+            r={CHECKER_R}
+            className={
+              activeDrag.color === "white"
+                ? "fill-[#f5f0e8] dark:fill-[#e8e0d4] stroke-[#c4b39a] dark:stroke-[#a89880]"
+                : "fill-[#2c2c2c] dark:fill-[#1a1a1a] stroke-[#555] dark:stroke-[#444]"
+            }
+            strokeWidth={2}
+            opacity={0.75}
+          />
+          <circle
+            cx={activeDrag.svgX}
+            cy={activeDrag.svgY}
+            r={CHECKER_R - 5}
+            fill="none"
+            className={
+              activeDrag.color === "white"
+                ? "stroke-[#d4c4a8] dark:stroke-[#c4b498]"
+                : "stroke-[#444] dark:stroke-[#333]"
+            }
+            strokeWidth={1}
+            opacity={0.75}
+          />
+        </g>
+      )}
     </svg>
   );
 
-  function renderCheckers(count: number, cx: number, isTop: boolean, pointIndex: number) {
+  function renderCheckers(
+    count: number,
+    cx: number,
+    isTop: boolean,
+    pointIndex: number
+  ) {
     const absCount = Math.abs(count);
-    const color = count > 0 ? "white" : "black";
+    const color: "white" | "black" = count > 0 ? "white" : "black";
     const positions = getCheckerPositions(count, isTop, cx);
-    const isSelectable = selectablePoints.has(pointIndex) && isMyTurn && hasDice;
+    const isSelectable =
+      selectablePoints.has(pointIndex) && isMyTurn && hasDice;
+    const isDragSource = activeDrag?.fromPoint === pointIndex;
 
     return (
-      <g onClick={() => onSelectPoint(pointIndex)} className={isSelectable ? "cursor-pointer" : ""}>
-        {positions.map((pos, i) => (
-          <g key={i}>
-            <circle
-              cx={pos.cx}
-              cy={pos.cy}
-              r={CHECKER_R - 1}
-              className={
-                color === "white"
-                  ? "fill-[#f5f0e8] dark:fill-[#e8e0d4] stroke-[#c4b39a] dark:stroke-[#a89880]"
-                  : "fill-[#2c2c2c] dark:fill-[#1a1a1a] stroke-[#555] dark:stroke-[#444]"
+      <g
+        onClick={() => onSelectPoint(pointIndex)}
+        className={isSelectable ? "cursor-pointer" : ""}
+      >
+        {positions.map((pos, i) => {
+          const isTopChecker = i === positions.length - 1;
+          return (
+            <g
+              key={i}
+              onPointerDown={
+                isSelectable && isTopChecker
+                  ? (e) => beginPendingDrag(e, pointIndex, color)
+                  : undefined
               }
-              strokeWidth={2}
-            />
-            <circle
-              cx={pos.cx}
-              cy={pos.cy}
-              r={CHECKER_R - 6}
-              fill="none"
-              className={
-                color === "white"
-                  ? "stroke-[#d4c4a8] dark:stroke-[#c4b498]"
-                  : "stroke-[#444] dark:stroke-[#333]"
+              style={
+                isSelectable && isTopChecker
+                  ? { cursor: "grab" }
+                  : undefined
               }
-              strokeWidth={1}
-            />
-          </g>
-        ))}
+              opacity={isDragSource && isTopChecker ? 0.3 : 1}
+            >
+              <circle
+                cx={pos.cx}
+                cy={pos.cy}
+                r={CHECKER_R - 1}
+                className={
+                  color === "white"
+                    ? "fill-[#f5f0e8] dark:fill-[#e8e0d4] stroke-[#c4b39a] dark:stroke-[#a89880]"
+                    : "fill-[#2c2c2c] dark:fill-[#1a1a1a] stroke-[#555] dark:stroke-[#444]"
+                }
+                strokeWidth={2}
+              />
+              <circle
+                cx={pos.cx}
+                cy={pos.cy}
+                r={CHECKER_R - 6}
+                fill="none"
+                className={
+                  color === "white"
+                    ? "stroke-[#d4c4a8] dark:stroke-[#c4b498]"
+                    : "stroke-[#444] dark:stroke-[#333]"
+                }
+                strokeWidth={1}
+              />
+            </g>
+          );
+        })}
         {absCount > 5 && (
           <text
             x={cx}
@@ -255,16 +536,28 @@ export default function BackgammonBoard({
     );
   }
 
-  function renderBarCheckers(count: number, color: "white" | "black", bx: number, isBottom: boolean) {
+  function renderBarCheckers(
+    count: number,
+    color: "white" | "black",
+    bx: number,
+    isBottom: boolean
+  ) {
     if (count === 0) return null;
-    const isClickable = color === "white" ? whiteBarClickable : blackBarClickable;
+    const isClickable =
+      color === "white" ? whiteBarClickable : blackBarClickable;
+    const barFrom = color === "white" ? -1 : 24;
+    const isDragSource = activeDrag?.fromPoint === barFrom;
 
     return (
-      <g onClick={isClickable ? onSelectBar : undefined} className={isClickable ? "cursor-pointer" : ""}>
+      <g
+        onClick={isClickable ? onSelectBar : undefined}
+        className={isClickable ? "cursor-pointer" : ""}
+      >
         {Array.from({ length: Math.min(count, 4) }).map((_, i) => {
           const cy = isBottom
             ? BOARD_H / 2 + 30 + i * (CHECKER_R * 2 + 2)
             : BOARD_H / 2 - 30 - i * (CHECKER_R * 2 + 2);
+          const isTopChecker = i === Math.min(count, 4) - 1;
           return (
             <circle
               key={i}
@@ -277,13 +570,24 @@ export default function BackgammonBoard({
                   : "fill-[#2c2c2c] dark:fill-[#1a1a1a] stroke-[#555] dark:stroke-[#444]"
               }
               strokeWidth={2}
+              style={isClickable && isTopChecker ? { cursor: "grab" } : undefined}
+              opacity={isDragSource && isTopChecker ? 0.3 : 1}
+              onPointerDown={
+                isClickable && isTopChecker
+                  ? (e) => beginPendingDrag(e, barFrom, color)
+                  : undefined
+              }
             />
           );
         })}
         {count > 4 && (
           <text
             x={bx}
-            y={isBottom ? BOARD_H / 2 + 30 + 3 * (CHECKER_R * 2 + 2) : BOARD_H / 2 - 30 - 3 * (CHECKER_R * 2 + 2)}
+            y={
+              isBottom
+                ? BOARD_H / 2 + 30 + 3 * (CHECKER_R * 2 + 2)
+                : BOARD_H / 2 - 30 - 3 * (CHECKER_R * 2 + 2)
+            }
             textAnchor="middle"
             dominantBaseline="central"
             className={`text-xs font-bold ${color === "white" ? "fill-[#2c2c2c]" : "fill-white"}`}
