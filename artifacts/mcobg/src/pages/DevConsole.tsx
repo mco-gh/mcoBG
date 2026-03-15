@@ -22,6 +22,7 @@ export default function DevConsole() {
   const [peerId, setPeerId] = useState("");
   const [rawEvent, setRawEvent] = useState("");
   const [rawPayload, setRawPayload] = useState("");
+  const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
   const logEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef(getSocket());
 
@@ -128,6 +129,15 @@ export default function DevConsole() {
     [addLog]
   );
 
+  const toggleExpand = useCallback((id: number) => {
+    setExpandedLogs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   const directionStyle = (d: LogEntry["direction"]) => {
     switch (d) {
       case "sent":
@@ -175,12 +185,20 @@ export default function DevConsole() {
               />
               {connected ? "Connected" : "Disconnected"}
             </span>
-            {gameId && (
-              <span className="text-sm text-orange-400">
-                Game: {gameId}
-              </span>
-            )}
           </div>
+        </div>
+
+        <div className="mb-4 flex items-center gap-2">
+          <label className="text-sm text-gray-400 shrink-0">Game ID:</label>
+          <input
+            className={`${inputClass} w-40`}
+            placeholder="Auto-populated"
+            value={gameId}
+            onChange={(e) => setGameId(e.target.value.toUpperCase())}
+          />
+          <span className="text-xs text-gray-500">
+            Auto-filled on create/join. Edit to target a different game.
+          </span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -197,7 +215,7 @@ export default function DevConsole() {
                 <div className="flex gap-2">
                   <input
                     className={`${inputClass} flex-1`}
-                    placeholder="Game ID"
+                    placeholder="Game ID (or uses above)"
                     value={joinId}
                     onChange={(e) => setJoinId(e.target.value)}
                   />
@@ -211,15 +229,19 @@ export default function DevConsole() {
                   </button>
                 </div>
 
-                <button
-                  className={`${btnSecondary} w-full`}
-                  onClick={() => emit("roll-dice", { gameId })}
-                  disabled={!gameId}
-                >
-                  roll-dice
-                </button>
+                <div className="flex gap-2 items-center">
+                  <span className="text-xs text-gray-500 shrink-0">Game ID: {gameId || "---"}</span>
+                  <button
+                    className={`${btnSecondary} flex-1`}
+                    onClick={() => emit("roll-dice", { gameId })}
+                    disabled={!gameId}
+                  >
+                    roll-dice
+                  </button>
+                </div>
 
                 <div className="flex gap-2">
+                  <span className="text-xs text-gray-500 shrink-0 self-center">Game ID: {gameId || "---"}</span>
                   <input
                     className={`${inputClass} w-16`}
                     placeholder="from"
@@ -249,19 +271,23 @@ export default function DevConsole() {
                   </button>
                 </div>
 
-                <button
-                  className={`${btnSecondary} w-full`}
-                  onClick={() => emit("end-turn", { gameId })}
-                  disabled={!gameId}
-                >
-                  end-turn
-                </button>
+                <div className="flex gap-2 items-center">
+                  <span className="text-xs text-gray-500 shrink-0">Game ID: {gameId || "---"}</span>
+                  <button
+                    className={`${btnSecondary} flex-1`}
+                    onClick={() => emit("end-turn", { gameId })}
+                    disabled={!gameId}
+                  >
+                    end-turn
+                  </button>
+                </div>
               </div>
             </Section>
 
             <Section title="Peer / Rematch">
               <div className="space-y-2">
                 <div className="flex gap-2">
+                  <span className="text-xs text-gray-500 shrink-0 self-center">Game ID: {gameId || "---"}</span>
                   <input
                     className={`${inputClass} flex-1`}
                     placeholder="Peer ID"
@@ -278,7 +304,8 @@ export default function DevConsole() {
                     share-peer-id
                   </button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                  <span className="text-xs text-gray-500 shrink-0">Game ID: {gameId || "---"}</span>
                   <button
                     className={`${btnSecondary} flex-1`}
                     onClick={() =>
@@ -347,32 +374,53 @@ export default function DevConsole() {
                   Clear
                 </button>
               </div>
-              <div className="h-[400px] overflow-y-auto bg-gray-900 rounded p-2 text-xs space-y-0.5">
+              <div className="h-[400px] overflow-y-auto bg-gray-900 rounded p-2 text-xs space-y-1">
                 {logs.length === 0 && (
                   <p className="text-gray-500 italic">
                     No events yet. Use the forms on the left to send events.
                   </p>
                 )}
-                {logs.map((entry) => (
-                  <div key={entry.id} className="flex gap-2 leading-5">
-                    <span className="text-gray-500 shrink-0">
-                      {entry.timestamp}
-                    </span>
-                    <span
-                      className={`shrink-0 w-4 text-center ${directionStyle(entry.direction)}`}
-                    >
-                      {directionArrow(entry.direction)}
-                    </span>
-                    <span
-                      className={`shrink-0 font-semibold ${directionStyle(entry.direction)}`}
-                    >
-                      {entry.event}
-                    </span>
-                    <span className="text-gray-400 break-all">
-                      {JSON.stringify(entry.payload)}
-                    </span>
-                  </div>
-                ))}
+                {logs.map((entry) => {
+                  const isExpanded = expandedLogs.has(entry.id);
+                  const payloadStr = JSON.stringify(entry.payload, null, 2);
+                  const isLong = payloadStr.length > 80;
+                  return (
+                    <div key={entry.id} className="leading-5">
+                      <div className="flex gap-2">
+                        <span className="text-gray-500 shrink-0">
+                          {entry.timestamp}
+                        </span>
+                        <span
+                          className={`shrink-0 w-4 text-center ${directionStyle(entry.direction)}`}
+                        >
+                          {directionArrow(entry.direction)}
+                        </span>
+                        <span
+                          className={`shrink-0 font-semibold ${directionStyle(entry.direction)}`}
+                        >
+                          {entry.event}
+                        </span>
+                        {isLong ? (
+                          <button
+                            className="text-gray-500 hover:text-gray-300 cursor-pointer"
+                            onClick={() => toggleExpand(entry.id)}
+                          >
+                            {isExpanded ? "\u25BC" : "\u25B6"} {isExpanded ? "collapse" : "expand"}
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 break-all">
+                            {payloadStr}
+                          </span>
+                        )}
+                      </div>
+                      {isLong && isExpanded && (
+                        <pre className={`ml-6 mt-1 p-2 rounded bg-gray-800 whitespace-pre-wrap break-all ${directionStyle(entry.direction)}`}>
+                          {payloadStr}
+                        </pre>
+                      )}
+                    </div>
+                  );
+                })}
                 <div ref={logEndRef} />
               </div>
             </Section>
