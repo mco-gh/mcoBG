@@ -29,7 +29,6 @@ const FRAME_LIGHT = "#9b5a30";
 const FRAME_DARK = "#5c2810";
 const SURFACE_COLOR = "#d4b894";
 const SURFACE_DARK = "#c8a87c";
-const BAR_COLOR = "#7a3418";
 const POINT_DARK = "#3d2010";
 const POINT_RED = "#8b2a14";
 const HIGHLIGHT_GREEN = "#4ade80";
