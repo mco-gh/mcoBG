@@ -80,50 +80,18 @@ export default function DevConsole() {
     (event: string, data?: unknown) => {
       const socket = socketRef.current;
       addLog("sent", event, data ?? null);
+      const handleAck = (response: unknown) => {
+        addLog("received", `${event}:ack`, response);
+        if (response && typeof response === "object") {
+          const res = response as Record<string, unknown>;
+          if ("gameId" in res) setGameId(res.gameId as string);
+          if ("state" in res) setGameState(res.state);
+        }
+      };
       if (data !== undefined) {
-        socket.emit(event, data, (response: unknown) => {
-          addLog("received", `${event}:ack`, response);
-          if (
-            response &&
-            typeof response === "object" &&
-            "gameId" in (response as Record<string, unknown>)
-          ) {
-            setGameId(
-              (response as Record<string, unknown>).gameId as string
-            );
-          }
-          if (
-            response &&
-            typeof response === "object" &&
-            "state" in (response as Record<string, unknown>)
-          ) {
-            setGameState(
-              (response as Record<string, unknown>).state
-            );
-          }
-        });
+        socket.emit(event, data, handleAck);
       } else {
-        socket.emit(event, (response: unknown) => {
-          addLog("received", `${event}:ack`, response);
-          if (
-            response &&
-            typeof response === "object" &&
-            "gameId" in (response as Record<string, unknown>)
-          ) {
-            setGameId(
-              (response as Record<string, unknown>).gameId as string
-            );
-          }
-          if (
-            response &&
-            typeof response === "object" &&
-            "state" in (response as Record<string, unknown>)
-          ) {
-            setGameState(
-              (response as Record<string, unknown>).state
-            );
-          }
-        });
+        socket.emit(event, handleAck);
       }
     },
     [addLog]
@@ -383,7 +351,7 @@ export default function DevConsole() {
                 {logs.map((entry) => {
                   const isExpanded = expandedLogs.has(entry.id);
                   const payloadStr = JSON.stringify(entry.payload, null, 2);
-                  const isLong = payloadStr.length > 80;
+                  const isMultiLine = payloadStr.includes("\n");
                   return (
                     <div key={entry.id} className="leading-5">
                       <div className="flex gap-2">
@@ -400,21 +368,23 @@ export default function DevConsole() {
                         >
                           {entry.event}
                         </span>
-                        {isLong ? (
+                        {isMultiLine ? (
                           <button
                             className="text-gray-500 hover:text-gray-300 cursor-pointer"
                             onClick={() => toggleExpand(entry.id)}
                           >
-                            {isExpanded ? "\u25BC" : "\u25B6"} {isExpanded ? "collapse" : "expand"}
+                            {isExpanded ? "\u25BC collapse" : "\u25B6 expand"}
                           </button>
-                        ) : (
-                          <span className="text-gray-400 break-all">
-                            {payloadStr}
-                          </span>
-                        )}
+                        ) : null}
                       </div>
-                      {isLong && isExpanded && (
-                        <pre className={`ml-6 mt-1 p-2 rounded bg-gray-800 whitespace-pre-wrap break-all ${directionStyle(entry.direction)}`}>
+                      {isMultiLine ? (
+                        isExpanded && (
+                          <pre className={`ml-6 mt-1 p-2 rounded bg-gray-800 whitespace-pre-wrap break-all ${directionStyle(entry.direction)}`}>
+                            {payloadStr}
+                          </pre>
+                        )
+                      ) : (
+                        <pre className={`ml-6 whitespace-pre-wrap break-all ${directionStyle(entry.direction)}`}>
                           {payloadStr}
                         </pre>
                       )}
