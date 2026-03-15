@@ -24,3 +24,27 @@ id = "PG7aLcntKTqbon5dJ52A7"
 uri = "file://attached_assets/generated_images/logo_neon_dice.png"
 type = "image"
 title = "Option D — Neon Dice"
+
+[[outputs]]
+id = "pA1PTZlP3fyycm1PXFvhf"
+uri = "file://attached_assets/generated_images/logo_c1_classic_warm.png"
+type = "image"
+title = "C1 — Classic Warm (terracotta + espresso on sandy beige)"
+
+[[outputs]]
+id = "FXL75N7AjQS88ThQx_DWJ"
+uri = "file://attached_assets/generated_images/logo_c2_dark_amber.png"
+type = "image"
+title = "C2 — Dark Mode (amber + teal on navy)"
+
+[[outputs]]
+id = "4IZSMKo19q-keTHt4u9k8"
+uri = "file://attached_assets/generated_images/logo_c3_luxe_crimson.png"
+type = "image"
+title = "C3 — Luxe Crimson (deep red + charcoal on ivory)"
+
+[[outputs]]
+id = "BzWDKIAVPuddnmt9MUva1"
+uri = "file://attached_assets/generated_images/logo_c4_colorful_modern.png"
+type = "image"
+title = "C4 — Colorful Modern (coral + mint on purple gradient)"
