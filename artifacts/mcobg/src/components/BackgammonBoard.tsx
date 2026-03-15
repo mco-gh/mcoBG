@@ -513,6 +513,16 @@ export default function BackgammonBoard({
       {renderBarCheckers(board.whiteBar, "white", barX, true)}
       {renderBarCheckers(board.blackBar, "black", barX, false)}
 
+      <rect
+        x={BOARD_W - MARGIN_X + 2}
+        y={MARGIN_Y - 2}
+        width={24}
+        height={BOARD_H - 2 * MARGIN_Y + 4}
+        rx={3}
+        fill={FRAME_DARK}
+        opacity={0.5}
+      />
+
       {board.whiteOff > 0 && renderOffBoard(board.whiteOff, "white")}
       {board.blackOff > 0 && renderOffBoard(board.blackOff, "black")}
 
