@@ -24,6 +24,17 @@ const MARGIN_X = 30;
 const MARGIN_Y = 20;
 const DRAG_THRESHOLD = 4;
 
+const FRAME_COLOR = "#7a3418";
+const FRAME_LIGHT = "#9b5a30";
+const FRAME_DARK = "#5c2810";
+const SURFACE_COLOR = "#d4b894";
+const SURFACE_DARK = "#c8a87c";
+const BAR_COLOR = "#8b5a2b";
+const POINT_DARK = "#3d2010";
+const POINT_RED = "#8b2a14";
+const HIGHLIGHT_GREEN = "#4ade80";
+const SELECTED_AMBER = "#f59e0b";
+
 function getCheckerPositions(
   count: number,
   isTop: boolean,
@@ -58,6 +69,67 @@ interface ActiveDrag {
   pointerId: number;
   svgX: number;
   svgY: number;
+}
+
+function CheckerDefs() {
+  return (
+    <defs>
+      <radialGradient id="whiteCheckerGrad" cx="0.35" cy="0.3" r="0.65">
+        <stop offset="0%" stopColor="#ffffff" />
+        <stop offset="40%" stopColor="#f0ebe3" />
+        <stop offset="100%" stopColor="#d4c8b0" />
+      </radialGradient>
+      <radialGradient id="blackCheckerGrad" cx="0.35" cy="0.3" r="0.65">
+        <stop offset="0%" stopColor="#555555" />
+        <stop offset="40%" stopColor="#2a2a2a" />
+        <stop offset="100%" stopColor="#0a0a0a" />
+      </radialGradient>
+      <linearGradient id="frameGradH" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={FRAME_LIGHT} />
+        <stop offset="50%" stopColor={FRAME_COLOR} />
+        <stop offset="100%" stopColor={FRAME_DARK} />
+      </linearGradient>
+      <linearGradient id="surfaceGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={SURFACE_COLOR} />
+        <stop offset="100%" stopColor={SURFACE_DARK} />
+      </linearGradient>
+      <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#6b4420" />
+        <stop offset="50%" stopColor={BAR_COLOR} />
+        <stop offset="100%" stopColor="#6b4420" />
+      </linearGradient>
+      <filter id="checkerShadow">
+        <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#000" floodOpacity="0.35" />
+      </filter>
+    </defs>
+  );
+}
+
+function Checker({
+  cx,
+  cy,
+  color,
+  r = CHECKER_R - 1,
+  opacity = 1,
+  shadow = true,
+}: {
+  cx: number;
+  cy: number;
+  color: "white" | "black";
+  r?: number;
+  opacity?: number;
+  shadow?: boolean;
+}) {
+  const fill = color === "white" ? "url(#whiteCheckerGrad)" : "url(#blackCheckerGrad)";
+  const strokeColor = color === "white" ? "#8a7a60" : "#222";
+  const ringColor = color === "white" ? "#c4b498" : "#444";
+
+  return (
+    <g opacity={opacity} filter={shadow ? "url(#checkerShadow)" : undefined}>
+      <circle cx={cx} cy={cy} r={r} fill={fill} stroke={strokeColor} strokeWidth={1.5} />
+      <circle cx={cx} cy={cy} r={r * 0.65} fill="none" stroke={ringColor} strokeWidth={1.2} opacity={0.6} />
+    </g>
+  );
 }
 
 export default function BackgammonBoard({
@@ -340,30 +412,70 @@ export default function BackgammonBoard({
       onPointerCancel={onPointerCancel}
       onLostPointerCapture={onLostPointerCapture}
     >
+      <CheckerDefs />
+
       <rect
         x={0}
         y={0}
         width={BOARD_W}
         height={BOARD_H}
-        rx={8}
-        className="fill-[#2d1810] dark:fill-[#1a1a2e]"
+        rx={12}
+        fill="url(#frameGradH)"
       />
 
       <rect
-        x={MARGIN_X - 4}
-        y={MARGIN_Y - 4}
-        width={BOARD_W - 2 * MARGIN_X + 8}
-        height={BOARD_H - 2 * MARGIN_Y + 8}
-        rx={4}
-        className="fill-[#4a3728] dark:fill-[#16213e]"
+        x={4}
+        y={4}
+        width={BOARD_W - 8}
+        height={BOARD_H - 8}
+        rx={8}
+        fill="none"
+        stroke={FRAME_DARK}
+        strokeWidth={2}
+        opacity={0.3}
+      />
+
+      <rect
+        x={MARGIN_X - 2}
+        y={MARGIN_Y - 2}
+        width={6 * POINT_W + 4}
+        height={BOARD_H - 2 * MARGIN_Y + 4}
+        rx={3}
+        fill="url(#surfaceGrad)"
+      />
+      <rect
+        x={MARGIN_X + 6 * POINT_W + BAR_W - 2}
+        y={MARGIN_Y - 2}
+        width={6 * POINT_W + 4}
+        height={BOARD_H - 2 * MARGIN_Y + 4}
+        rx={3}
+        fill="url(#surfaceGrad)"
       />
 
       <rect
         x={barX - BAR_W / 2}
-        y={MARGIN_Y}
+        y={MARGIN_Y - 2}
         width={BAR_W}
-        height={BOARD_H - 2 * MARGIN_Y}
-        className="fill-[#3d2b1f] dark:fill-[#0f3460]"
+        height={BOARD_H - 2 * MARGIN_Y + 4}
+        fill="url(#barGrad)"
+      />
+      <line
+        x1={barX - BAR_W / 2}
+        y1={MARGIN_Y - 2}
+        x2={barX - BAR_W / 2}
+        y2={BOARD_H - MARGIN_Y + 2}
+        stroke={FRAME_DARK}
+        strokeWidth={1}
+        opacity={0.4}
+      />
+      <line
+        x1={barX + BAR_W / 2}
+        y1={MARGIN_Y - 2}
+        x2={barX + BAR_W / 2}
+        y2={BOARD_H - MARGIN_Y + 2}
+        stroke={FRAME_DARK}
+        strokeWidth={1}
+        opacity={0.4}
       />
 
       {pointPositions.map(({ x, isTop, pointIndex }) => {
@@ -375,32 +487,24 @@ export default function BackgammonBoard({
         const tipY = isTop ? MARGIN_Y : BOARD_H - MARGIN_Y;
         const baseY = isTop ? MARGIN_Y + POINT_H : BOARD_H - MARGIN_Y - POINT_H;
 
-        let fillClass = isEven
-          ? "fill-[#c4956a] dark:fill-[#e94560]"
-          : "fill-[#8b5e3c] dark:fill-[#533483]";
-
+        let fill: string;
         if (isHighlighted) {
-          fillClass = "fill-[#4ade80] dark:fill-[#22c55e]";
+          fill = HIGHLIGHT_GREEN;
         } else if (isSelected) {
-          fillClass = "fill-[#fbbf24] dark:fill-[#f59e0b]";
+          fill = SELECTED_AMBER;
+        } else {
+          fill = isEven ? POINT_RED : POINT_DARK;
         }
 
         return (
           <g key={pointIndex}>
             <polygon
               points={`${x - POINT_W / 2},${baseY} ${x},${tipY} ${x + POINT_W / 2},${baseY}`}
-              className={`${fillClass} ${isSelectable || isHighlighted ? "cursor-pointer" : ""} transition-colors`}
+              fill={fill}
+              className={`${isSelectable || isHighlighted ? "cursor-pointer" : ""} transition-colors`}
               style={{ opacity: isHighlighted ? 0.8 : 1 }}
               onClick={() => onSelectPoint(pointIndex)}
             />
-            <text
-              x={x}
-              y={isTop ? MARGIN_Y - 6 : BOARD_H - MARGIN_Y + 14}
-              textAnchor="middle"
-              className="text-[8px] fill-[#8b7355] dark:fill-[#555] select-none"
-            >
-              {pointIndex + 1}
-            </text>
             {board.points[pointIndex] !== 0 &&
               renderCheckers(board.points[pointIndex], x, isTop, pointIndex)}
           </g>
@@ -421,7 +525,7 @@ export default function BackgammonBoard({
           height={BOARD_H / 2 - MARGIN_Y - 20}
           rx={4}
           fill="none"
-          stroke="#fbbf24"
+          stroke={SELECTED_AMBER}
           strokeWidth={3}
         />
       )}
@@ -433,7 +537,7 @@ export default function BackgammonBoard({
           height={BOARD_H / 2 - MARGIN_Y - 20}
           rx={4}
           fill="none"
-          stroke="#fbbf24"
+          stroke={SELECTED_AMBER}
           strokeWidth={3}
         />
       )}
@@ -445,7 +549,8 @@ export default function BackgammonBoard({
           width={20}
           height={80}
           rx={4}
-          className="fill-[#4ade80] dark:fill-[#22c55e] cursor-pointer"
+          fill={HIGHLIGHT_GREEN}
+          className="cursor-pointer"
           style={{ opacity: 0.7 }}
           onClick={() => onSelectPoint(highlightedPoints.has(24) ? 24 : -1)}
         />
@@ -453,30 +558,13 @@ export default function BackgammonBoard({
 
       {activeDrag && (
         <g style={{ pointerEvents: "none" }}>
-          <circle
+          <Checker
             cx={activeDrag.svgX}
             cy={activeDrag.svgY}
+            color={activeDrag.color}
             r={CHECKER_R}
-            className={
-              activeDrag.color === "white"
-                ? "fill-[#f5f0e8] dark:fill-[#e8e0d4] stroke-[#c4b39a] dark:stroke-[#a89880]"
-                : "fill-[#2c2c2c] dark:fill-[#1a1a1a] stroke-[#555] dark:stroke-[#444]"
-            }
-            strokeWidth={2}
-            opacity={0.75}
-          />
-          <circle
-            cx={activeDrag.svgX}
-            cy={activeDrag.svgY}
-            r={CHECKER_R - 5}
-            fill="none"
-            className={
-              activeDrag.color === "white"
-                ? "stroke-[#d4c4a8] dark:stroke-[#c4b498]"
-                : "stroke-[#444] dark:stroke-[#333]"
-            }
-            strokeWidth={1}
-            opacity={0.75}
+            opacity={0.8}
+            shadow={false}
           />
         </g>
       )}
@@ -524,30 +612,12 @@ export default function BackgammonBoard({
                   ? { cursor: "grab" }
                   : undefined
               }
-              opacity={isDragSource && isTopChecker ? 0.3 : 1}
             >
-              <circle
+              <Checker
                 cx={pos.cx}
                 cy={pos.cy}
-                r={CHECKER_R - 1}
-                className={
-                  color === "white"
-                    ? "fill-[#f5f0e8] dark:fill-[#e8e0d4] stroke-[#c4b39a] dark:stroke-[#a89880]"
-                    : "fill-[#2c2c2c] dark:fill-[#1a1a1a] stroke-[#555] dark:stroke-[#444]"
-                }
-                strokeWidth={2}
-              />
-              <circle
-                cx={pos.cx}
-                cy={pos.cy}
-                r={CHECKER_R - 6}
-                fill="none"
-                className={
-                  color === "white"
-                    ? "stroke-[#d4c4a8] dark:stroke-[#c4b498]"
-                    : "stroke-[#444] dark:stroke-[#333]"
-                }
-                strokeWidth={1}
+                color={color}
+                opacity={isDragSource && isTopChecker ? 0.3 : 1}
               />
             </g>
           );
@@ -598,25 +668,23 @@ export default function BackgammonBoard({
             : BOARD_H / 2 - 30 - i * (CHECKER_R * 2 + 2);
           const isTopChecker = i === Math.min(count, 4) - 1;
           return (
-            <circle
+            <g
               key={i}
-              cx={bx}
-              cy={cy}
-              r={CHECKER_R - 2}
-              className={
-                color === "white"
-                  ? "fill-[#f5f0e8] dark:fill-[#e8e0d4] stroke-[#c4b39a] dark:stroke-[#a89880]"
-                  : "fill-[#2c2c2c] dark:fill-[#1a1a1a] stroke-[#555] dark:stroke-[#444]"
-              }
-              strokeWidth={2}
-              style={isClickable && isTopChecker ? { cursor: "grab" } : undefined}
-              opacity={isDragSource && isTopChecker ? 0.3 : 1}
               onPointerDown={
                 isClickable && isTopChecker
                   ? (e) => beginPendingDrag(e, barFrom, color)
                   : undefined
               }
-            />
+              style={isClickable && isTopChecker ? { cursor: "grab" } : undefined}
+            >
+              <Checker
+                cx={bx}
+                cy={cy}
+                color={color}
+                r={CHECKER_R - 2}
+                opacity={isDragSource && isTopChecker ? 0.3 : 1}
+              />
+            </g>
           );
         })}
         {count > 4 && (
@@ -655,11 +723,8 @@ export default function BackgammonBoard({
               width={16}
               height={10}
               rx={2}
-              className={
-                color === "white"
-                  ? "fill-[#f5f0e8] dark:fill-[#e8e0d4] stroke-[#c4b39a]"
-                  : "fill-[#2c2c2c] dark:fill-[#1a1a1a] stroke-[#555]"
-              }
+              fill={color === "white" ? "#e8dcc8" : "#1a1a1a"}
+              stroke={color === "white" ? "#a89878" : "#444"}
               strokeWidth={1}
             />
           );
