@@ -284,6 +284,8 @@ export default function BackgammonBoard({
         } else if (from !== null) {
           onSelectPoint(from);
         }
+      } else if (from !== null) {
+        onSelectPoint(from);
       }
 
       setActiveDrag(null);
