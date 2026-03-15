@@ -202,6 +202,7 @@ export default function BackgammonBoard({
       e.preventDefault();
       e.stopPropagation();
 
+      selectSource(fromPoint);
       dragFromRef.current = fromPoint;
       pendingRef.current = {
         fromPoint,
@@ -216,7 +217,7 @@ export default function BackgammonBoard({
         svg.setPointerCapture(e.pointerId);
       }
     },
-    [isMyTurn, hasDice]
+    [isMyTurn, hasDice, selectSource]
   );
 
   const onPointerMove = useCallback(
@@ -227,7 +228,6 @@ export default function BackgammonBoard({
         if (Math.abs(dx) + Math.abs(dy) >= DRAG_THRESHOLD) {
           const pos = screenToSvg(e.clientX, e.clientY);
           if (pos) {
-            selectSource(pendingRef.current.fromPoint);
             setActiveDrag({
               fromPoint: pendingRef.current.fromPoint,
               color: pendingRef.current.color,
@@ -254,7 +254,6 @@ export default function BackgammonBoard({
   const onPointerUp = useCallback(
     (e: React.PointerEvent) => {
       if (pendingRef.current) {
-        const pending = pendingRef.current;
         const svg = svgRef.current;
         if (svg) {
           try {
@@ -263,7 +262,6 @@ export default function BackgammonBoard({
         }
         pendingRef.current = null;
         dragFromRef.current = null;
-        selectSource(pending.fromPoint);
         suppressClickRef.current = true;
         return;
       }
