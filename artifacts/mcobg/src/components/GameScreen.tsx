@@ -80,6 +80,7 @@ export default function GameScreen({
     <div className="min-h-screen bg-[#f5f0e8] dark:bg-[#0a0a1a] transition-colors flex flex-col">
       <header className="flex items-center justify-between px-4 py-2 bg-[#e8ddd0] dark:bg-[#16213e] border-b border-[#c4b39a] dark:border-[#333]">
         <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="mcoBG" className="w-7 h-7 object-contain" />
           <h1 className="text-xl font-bold text-[#2c1810] dark:text-[#e8e0d4]">
             mcoBG
           </h1>
