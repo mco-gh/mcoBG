@@ -11,86 +11,127 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
+- **Database**: PostgreSQL + Drizzle ORM (available but not used by mcoBG)
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
+- **Real-time**: Socket.io (server + client)
+- **Video chat**: PeerJS (WebRTC)
 
 ## Structure
 
 ```text
 artifacts-monorepo/
 ├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
+│   ├── api-server/         # Express API server + Socket.io game logic
+│   └── mcobg/              # React + Vite frontend for Backgammon game
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
 │   └── db/                 # Drizzle ORM schema + DB connection
 ├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
+│   └── src/                # Individual .ts scripts
+├── pnpm-workspace.yaml     # pnpm workspace
+├── tsconfig.base.json      # Shared TS options
 ├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+└── package.json            # Root package
 ```
+
+## mcoBG — Multiplayer Backgammon
+
+### Architecture
+
+- **Frontend** (`artifacts/mcobg`): React + Vite + Tailwind CSS app with Socket.io client and PeerJS video chat
+- **Backend** (`artifacts/api-server`): Express + Socket.io server handling game state, move validation, and room management
+- **Game Logic** (`artifacts/api-server/src/game-logic.ts`): Complete Backgammon rules engine
+
+### Game Features
+
+- Create/join games via 6-character Game ID
+- Full Backgammon rule enforcement (movement, hitting, bar, bearing off, doubles)
+- Real-time state sync via Socket.io
+- Click-to-select + click-to-move checker interaction with visual highlights
+- Animated dice rolling
+- PeerJS video/audio chat between players
+- Dark mode (default) / light mode toggle
+- Modals: About/How to Play, Connect (share Game ID)
+- Rematch support
+- Graceful disconnection handling
+
+### Key Files
+
+- `artifacts/api-server/src/socket-handler.ts` — Socket.io event handlers for game rooms
+- `artifacts/api-server/src/game-logic.ts` — Backgammon rules (board init, move validation, bearing off, etc.)
+- `artifacts/mcobg/src/hooks/useGame.ts` — Game state management hook
+- `artifacts/mcobg/src/components/BackgammonBoard.tsx` — SVG board rendering
+- `artifacts/mcobg/src/components/DiceTray.tsx` — Dice display with animations
+- `artifacts/mcobg/src/components/VideoFeed.tsx` — PeerJS video chat component
+- `artifacts/mcobg/src/components/GameScreen.tsx` — Main game UI with modals
+- `artifacts/mcobg/src/components/LandingPage.tsx` — Create/Join game landing
+- `artifacts/mcobg/src/lib/socket.ts` — Socket.io client singleton (path: /api/socket.io)
+
+### Socket.io Events
+
+- `create-game` — Creates room, assigns white to creator
+- `join-game` — Second player joins as black, triggers `game-started`
+- `roll-dice` — Server generates dice, computes valid moves
+- `move-piece` — Server validates and applies move
+- `end-turn` — Switches active player
+- `share-peer-id` — Relays PeerJS IDs for video connection
+- `request-rematch` / `accept-rematch` — Rematch flow
+- `disconnect` — Notifies opponent, cleans up room
 
 ## TypeScript & Composite Projects
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
+Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references.
 
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+- **Always typecheck from the root** — run `pnpm run typecheck`
+- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck
+- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array
 
 ## Root Scripts
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
+- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages
 - `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
 
 ## Packages
 
 ### `artifacts/api-server` (`@workspace/api-server`)
 
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
+Express 5 API server with Socket.io for real-time game state management.
 
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
+- Entry: `src/index.ts` — creates HTTP server, attaches Socket.io, starts Express
+- Socket handler: `src/socket-handler.ts` — all game room management
+- Game logic: `src/game-logic.ts` — Backgammon rules engine
+- Routes: `src/routes/` — REST endpoints (health check)
 - Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
+
+### `artifacts/mcobg` (`@workspace/mcobg`)
+
+React + Vite frontend for the Backgammon game.
+
+- Uses Socket.io client for real-time communication
+- Uses PeerJS for WebRTC video/audio chat
+- Tailwind CSS for styling with dark/light theme
+- SVG-based board rendering
 
 ### `lib/db` (`@workspace/db`)
 
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
-
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
-
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
+Database layer using Drizzle ORM with PostgreSQL. Available but not used by mcoBG (game state is in-memory).
 
 ### `lib/api-spec` (`@workspace/api-spec`)
 
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
-
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
-
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
+Owns the OpenAPI 3.1 spec and Orval config. Run codegen: `pnpm --filter @workspace/api-spec run codegen`
 
 ### `lib/api-zod` (`@workspace/api-zod`)
 
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
+Generated Zod schemas from the OpenAPI spec.
 
 ### `lib/api-client-react` (`@workspace/api-client-react`)
 
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
+Generated React Query hooks and fetch client from the OpenAPI spec.
 
 ### `scripts` (`@workspace/scripts`)
 
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+Utility scripts package.
