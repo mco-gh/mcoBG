@@ -1,0 +1,47 @@
+To build mcoBG from scratch, use the following comprehensive prompt. It is designed to provide a coding agent with all the necessary context, logic requirements, and technical specifications to recreate both the front end and the back end.
+Prompt: Real-Time Multiplayer Backgammon with Video Chat (mcoBG)
+Build a full-stack, real-time multiplayer Backgammon application called mcoBG. The app should allow two players to connect via a unique Game ID, play a full game of Backgammon with validated moves, and see/hear each other via a P2P video feed.
+1. Technical Stack
+Frontend: React (TypeScript), Tailwind CSS, Lucide-React (icons).
+Backend: Node.js (Express) with Socket.io for real-time game state.
+Communication: PeerJS for WebRTC video/audio streaming.
+Styling: Modern, clean UI with a "Dark Mode" default and a toggle for "Light Mode."
+2. Core Game Logic (Backgammon Rules)
+Board Setup: 24 points, a "Bar" for hit checkers, and "Off-board" for bearing off.
+Initial State: Standard Backgammon starting positions (2 on pt 24, 5 on pt 13, 3 on pt 8, 5 on pt 6 for each player).
+Movement:
+White moves from point 1 to 24 (clockwise/counter-clockwise toggleable).
+Black moves from point 24 to 1.
+Checkers can move to an open point, a point owned by the player, or a point with exactly one opponent checker (a "blot").
+Hitting & The Bar: If a checker lands on an opponent's blot, the opponent's checker is moved to the "Bar." Players must move checkers from the Bar before making any other moves.
+Bearing Off: Once all of a player's checkers are in their home quadrant (points 1-6 or 19-24 depending on color), they can begin bearing them off the board.
+Dice: Roll two 6-sided dice. If doubles are rolled, the player gets 4 moves of that value.
+3. Backend Requirements (Socket.io)
+The server must manage game rooms and act as the source of truth for the game state.
+Events to Handle:
+create-game: Generate a unique 6-character Game ID and initialize a board.
+join-game: Allow a second player to join a room via ID.
+roll-dice: Generate random dice values and determine available moves.
+move-piece: Validate the move (check if point is open, handle hitting blots) and update the board state.
+end-turn: Switch the active player and reset dice.
+disconnect: Notify the remaining player if their opponent leaves.
+4. Frontend Requirements (UI/UX)
+Landing Page: Simple entry with "Create Game" and "Join Game" options.
+Game Board:
+A realistic 2D board with 24 triangles (points).
+Draggable or click-to-move checkers.
+Visual indicators for the active player's turn and valid move targets.
+Dice Tray: Animated dice rolling (use CSS transforms for a "shake" effect).
+Video Feed: Two small video overlays (Local and Remote) using PeerJS.
+Status Bar: Clear messaging (e.g., "Your Turn," "Waiting for Opponent," "White hit Black!").
+Modals: "About" (instructions), "Config" (theme/direction settings), and "Connect" (ID sharing).
+5. Key Components to Implement
+BackgammonBoard: The main SVG or Grid-based playing surface.
+Checker: Individual pieces with color-coding.
+DiceTray: Handles the UI for rolling and displaying dice.
+VideoFeed: Manages the navigator.mediaDevices stream and PeerJS connection.
+GameController: A custom hook or context to manage Socket.io communication and local optimistic state updates.
+6. Implementation Details
+Move Validation: Ensure the client cannot move pieces out of turn or to invalid points.
+Responsiveness: The board should scale to fit the screen while maintaining its aspect ratio.
+Theme: Use Tailwind's dark class. Dark mode should use a deep slate/charcoal palette; light mode should use a warm paper/wood palette.
