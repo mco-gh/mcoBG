@@ -62,17 +62,17 @@ export interface GenericResponse {
 
 export const MOVEMENT_RULES = {
   white: {
-    direction: 'ascending' as const,
-    homeBoard: { start: 19, end: 24 },
-    barFrom: -1,
-    bearOffTo: 24,
-    description: 'White moves from point 1 toward point 24',
-  },
-  black: {
     direction: 'descending' as const,
     homeBoard: { start: 1, end: 6 },
-    barFrom: 24,
+    barFrom: -1,
     bearOffTo: -1,
-    description: 'Black moves from point 24 toward point 1',
+    description: 'White moves from point 24 toward point 1',
+  },
+  black: {
+    direction: 'ascending' as const,
+    homeBoard: { start: 19, end: 24 },
+    barFrom: 24,
+    bearOffTo: 24,
+    description: 'Black moves from point 1 toward point 24',
   },
 } as const;

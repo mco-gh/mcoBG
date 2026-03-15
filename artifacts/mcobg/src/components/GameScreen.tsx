@@ -255,8 +255,8 @@ export default function GameScreen({
               <div>
                 <div className="font-medium text-[#2c1810] dark:text-[#e8e0d4] mb-1">Movement Direction</div>
                 <div className="text-sm text-[#8b7355] dark:text-[#666] space-y-1">
-                  <p>{MOVEMENT_RULES.white.description} (home: 19-24)</p>
-                  <p>{MOVEMENT_RULES.black.description} (home: 1-6)</p>
+                  <p>{MOVEMENT_RULES.white.description} (home: {MOVEMENT_RULES.white.homeBoard.start}-{MOVEMENT_RULES.white.homeBoard.end})</p>
+                  <p>{MOVEMENT_RULES.black.description} (home: {MOVEMENT_RULES.black.homeBoard.start}-{MOVEMENT_RULES.black.homeBoard.end})</p>
                 </div>
               </div>
               <div>
