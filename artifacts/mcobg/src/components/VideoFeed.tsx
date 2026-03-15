@@ -85,12 +85,14 @@ export default function VideoFeed({ gameId, myColor, onPeerIdReady }: Props) {
       }
     }
 
+    const socket = getSocket();
     init();
 
     return () => {
       mounted = false;
       localStream?.getTracks().forEach((t) => t.stop());
       peerRef.current?.destroy();
+      socket.off("peer-id-shared");
     };
   }, [gameId, myColor]);
 
