@@ -5,7 +5,7 @@ import VideoFeed from "./VideoFeed";
 import type { GameState, PlayerColor } from "@/lib/game-types";
 import { MOVEMENT_RULES } from "@/lib/game-types";
 import { Sun, Moon, HelpCircle, Settings, Share2, RotateCcw, Copy, Check } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 
 interface Props {
   gameState: GameState;
@@ -56,24 +56,11 @@ export default function GameScreen({
   const [showConnect, setShowConnect] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [copiedGameId, setCopiedGameId] = useState(false);
-  const [copiedPeerId, setCopiedPeerId] = useState(false);
-  const [myPeerId, setMyPeerId] = useState<string | null>(null);
-
-  const handlePeerIdReady = useCallback((peerId: string) => {
-    setMyPeerId(peerId);
-  }, []);
 
   const copyGameId = () => {
     navigator.clipboard.writeText(gameId);
     setCopiedGameId(true);
     setTimeout(() => setCopiedGameId(false), 2000);
-  };
-
-  const copyPeerId = () => {
-    if (!myPeerId) return;
-    navigator.clipboard.writeText(myPeerId);
-    setCopiedPeerId(true);
-    setTimeout(() => setCopiedPeerId(false), 2000);
   };
 
   return (
@@ -166,7 +153,7 @@ export default function GameScreen({
         )}
       </div>
 
-      <VideoFeed gameId={gameId} myColor={myColor} onPeerIdReady={handlePeerIdReady} />
+      <VideoFeed gameId={gameId} myColor={myColor} />
 
       {showAbout && (
         <div
@@ -308,20 +295,7 @@ export default function GameScreen({
                   {copiedGameId ? <><Check className="w-4 h-4" /> Copied!</> : <><Copy className="w-4 h-4" /> Copy Game ID</>}
                 </button>
               </div>
-              <div>
-                <div className="text-sm text-[#8b7355] dark:text-[#666] mb-2">Peer ID (Video Chat)</div>
-                <div className="px-4 py-3 bg-[#f5f0e8] dark:bg-[#0a0a1a] rounded-xl font-mono text-xs text-[#6b5a4e] dark:text-[#888] break-all">
-                  {myPeerId ?? "Connecting..."}
-                </div>
-                {myPeerId && (
-                  <button
-                    onClick={copyPeerId}
-                    className="mt-2 w-full py-2 bg-[#4a3728] hover:bg-[#3d2b1f] dark:bg-[#16213e] dark:hover:bg-[#0f3460] text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    {copiedPeerId ? <><Check className="w-4 h-4" /> Copied!</> : <><Copy className="w-4 h-4" /> Copy Peer ID</>}
-                  </button>
-                )}
-              </div>
+
             </div>
             <p className="text-sm text-[#8b7355] dark:text-[#666] mt-4">
               Share the Game ID with your friend so they can join.
