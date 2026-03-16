@@ -33,15 +33,22 @@ function withSocket<T>(fn: (socket: Sock) => Promise<T>, timeoutMs = 8000): Prom
   });
 }
 
-function createGame(): Promise<string> {
-  return withSocket((socket) =>
-    new Promise<string>((resolve, reject) => {
+// Returns { gameId, socket } — caller MUST disconnect the socket when done.
+// Using withSocket() here would disconnect the creator immediately, triggering
+// the server's disconnect handler which deletes the game room.
+function createGameKeepAlive(): Promise<{ gameId: string; socket: Sock }> {
+  return new Promise((resolve, reject) => {
+    const socket = makeSocket();
+    const timer = setTimeout(() => { socket.disconnect(); reject(new Error("createGame timeout")); }, 8000);
+    socket.on("connect_error", (e: Error) => { clearTimeout(timer); reject(e); });
+    socket.on("connect", () => {
       socket.emit("create-game", (res: CreateRes) => {
-        if (!res.success || !res.gameId) reject(new Error(res.error ?? "create-game failed"));
-        else resolve(res.gameId);
+        clearTimeout(timer);
+        if (!res.success || !res.gameId) { socket.disconnect(); reject(new Error(res.error ?? "create-game failed")); }
+        else resolve({ gameId: res.gameId, socket });
       });
-    })
-  );
+    });
+  });
 }
 
 export const socketTests: TestCase[] = [
@@ -81,20 +88,24 @@ export const socketTests: TestCase[] = [
     name: "Second player joins a created game and receives color + state",
     category: "Network",
     async fn() {
-      const gameId = await createGame();
-      await withSocket((socket) =>
-        new Promise<void>((resolve, reject) => {
-          socket.emit("join-game", { gameId }, (res: JoinRes) => {
-            try {
-              assert(res.success === true, `join-game failed: ${res.error}`);
-              assert(res.gameId === gameId, `gameId mismatch: got "${res.gameId}"`);
-              assert(res.color === "black", `Second player should be black, got "${res.color}"`);
-              assert(res.state !== undefined, "state should be present");
-              resolve();
-            } catch (e) { reject(e); }
-          });
-        })
-      );
+      const { gameId, socket: s1 } = await createGameKeepAlive();
+      try {
+        await withSocket((s2) =>
+          new Promise<void>((resolve, reject) => {
+            s2.emit("join-game", { gameId }, (res: JoinRes) => {
+              try {
+                assert(res.success === true, `join-game failed: ${res.error}`);
+                assert(res.gameId === gameId, `gameId mismatch: got "${res.gameId}"`);
+                assert(res.color === "black", `Second player should be black, got "${res.color}"`);
+                assert(res.state !== undefined, "state should be present");
+                resolve();
+              } catch (e) { reject(e); }
+            });
+          })
+        );
+      } finally {
+        s1.disconnect();
+      }
     },
   },
   {
@@ -168,28 +179,41 @@ export const socketTests: TestCase[] = [
     name: "A room can only hold two players — third join is rejected",
     category: "Network",
     async fn() {
-      const gameId = await createGame();
-
-      await withSocket((socket) =>
-        new Promise<void>((resolve, reject) => {
-          socket.emit("join-game", { gameId }, (res: JoinRes) => {
-            if (res.success) resolve();
-            else reject(new Error(`Second join unexpectedly failed: ${res.error}`));
+      const { gameId, socket: s1 } = await createGameKeepAlive();
+      try {
+        // Second player joins successfully (keep alive so room stays open)
+        const { socket: s2 } = await new Promise<{ socket: Sock }>((resolve, reject) => {
+          const s = makeSocket();
+          const timer = setTimeout(() => { s.disconnect(); reject(new Error("s2 connect timeout")); }, 8000);
+          s.on("connect_error", (e: Error) => { clearTimeout(timer); reject(e); });
+          s.on("connect", () => {
+            s.emit("join-game", { gameId }, (res: JoinRes) => {
+              clearTimeout(timer);
+              if (res.success) resolve({ socket: s });
+              else { s.disconnect(); reject(new Error(`Second join failed: ${res.error}`)); }
+            });
           });
-        })
-      );
+        });
 
-      await withSocket((socket) =>
-        new Promise<void>((resolve, reject) => {
-          socket.emit("join-game", { gameId }, (res: JoinRes) => {
-            try {
-              assert(res.success === false, "Third player should be rejected");
-              assert(typeof res.error === "string" && res.error.length > 0, "Expected rejection error message");
-              resolve();
-            } catch (e) { reject(e); }
-          });
-        })
-      );
+        try {
+          // Third player must be rejected
+          await withSocket((s3) =>
+            new Promise<void>((resolve, reject) => {
+              s3.emit("join-game", { gameId }, (res: JoinRes) => {
+                try {
+                  assert(res.success === false, "Third player should be rejected");
+                  assert(typeof res.error === "string" && res.error.length > 0, "Expected rejection error");
+                  resolve();
+                } catch (e) { reject(e); }
+              });
+            })
+          );
+        } finally {
+          s2.disconnect();
+        }
+      } finally {
+        s1.disconnect();
+      }
     },
   },
 ];
